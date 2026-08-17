@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assistant de préremplissage FE — STCS</title>
+<style>
+  :root{
+    --bleu-stcs:#1F5C99;
+    --bleu-fonce:#123a63;
+    --orange-prio:#FCE4D6;
+    --orange-bord:#E08A3C;
+    --gris-fond:#F5F7FA;
+    --gris-bord:#D3DAE3;
+    --texte:#1E2530;
+    --texte-att:#5A6472;
+    --vert-ok:#2E7D4F;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:"Segoe UI", Arial, sans-serif; background:var(--gris-fond); color:var(--texte);
+    padding-bottom:60px;
+  }
+  header.banniere{
+    background:linear-gradient(135deg, var(--bleu-stcs), var(--bleu-fonce));
+    color:#fff; padding:22px 28px; box-shadow:0 2px 6px rgba(0,0,0,.15);
+  }
+  header.banniere h1{ margin:0 0 4px 0; font-size:1.4rem; font-weight:600; }
+  header.banniere p{ margin:0; font-size:.9rem; opacity:.9; }
+
+  main{ max-width:1180px; margin:0 auto; padding:22px 20px 40px; }
+
+  .avertissement{
+    background:var(--orange-prio); border-left:5px solid var(--orange-bord);
+    padding:12px 16px; border-radius:4px; font-size:.88rem; margin-bottom:22px; line-height:1.5;
+  }
+  .avertissement strong{ color:#7a4416; }
+
+  .panneau{
+    background:#fff; border:1px solid var(--gris-bord); border-radius:8px;
+    padding:18px 20px; margin-bottom:24px; box-shadow:0 1px 3px rgba(0,0,0,.04);
+  }
+  .panneau h2{
+    font-size:1.05rem; color:var(--bleu-fonce); margin:0 0 14px 0;
+    border-bottom:2px solid var(--gris-bord); padding-bottom:8px;
+  }
+
+  .form-grid{ display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end; }
+  .champ{ display:flex; flex-direction:column; gap:5px; }
+  .champ label{ font-size:.8rem; font-weight:600; color:var(--texte-att); }
+  .champ input, .champ select{
+    padding:8px 10px; border:1px solid var(--gris-bord); border-radius:5px; font-size:.92rem; min-width:220px;
+  }
+  .champ.petit input{ min-width:110px; }
+  button.principal{
+    background:var(--bleu-stcs); color:#fff; border:none; padding:10px 20px; border-radius:5px;
+    font-size:.92rem; font-weight:600; cursor:pointer; transition:background .15s;
+  }
+  button.principal:hover{ background:var(--bleu-fonce); }
+  button.secondaire{
+    background:#fff; color:var(--bleu-stcs); border:1px solid var(--bleu-stcs); padding:8px 14px;
+    border-radius:5px; font-size:.85rem; cursor:pointer; margin-right:8px;
+  }
+  button.secondaire:hover{ background:#eef4fa; }
+  button.mini{
+    background:none; border:1px solid var(--gris-bord); color:var(--texte-att); border-radius:4px;
+    padding:3px 9px; font-size:.78rem; cursor:pointer;
+  }
+  button.mini:hover{ border-color:var(--bleu-stcs); color:var(--bleu-stcs); }
+
+  .statut-couverture{ font-size:.82rem; margin-top:10px; padding:8px 12px; border-radius:5px; display:none; }
+  .statut-couverture.ok{ background:#e7f4ec; color:var(--vert-ok); display:block; }
+  .statut-couverture.fallback{ background:#fdf1e6; color:#8a5a1c; display:block; }
+
+  table{ width:100%; border-collapse:collapse; font-size:.86rem; margin-top:6px; }
+  thead th{
+    background:var(--bleu-stcs); color:#fff; text-align:left; padding:9px 10px; font-weight:600;
+    font-size:.8rem; text-transform:uppercase; letter-spacing:.02em;
+  }
+  tbody td{
+    border:1px solid var(--gris-bord); padding:8px 10px; vertical-align:top; background:#fff;
+  }
+  tbody tr.prioritaire td{ background:var(--orange-prio); }
+  tbody td[contenteditable="true"]{ outline:none; cursor:text; }
+  tbody td[contenteditable="true"]:focus{ box-shadow:inset 0 0 0 2px var(--bleu-stcs); background:#fff; }
+  td.col-actions{ width:34px; text-align:center; border:none; background:transparent; }
+  td.col-actions button{ background:none; border:none; color:#b33; cursor:pointer; font-size:1rem; }
+
+  .badge-prio{
+    display:inline-block; background:var(--orange-bord); color:#fff; font-size:.68rem; font-weight:700;
+    padding:1px 7px; border-radius:10px; margin-left:6px; vertical-align:middle;
+  }
+
+  .bloc-preco{
+    border:1px solid var(--gris-bord); border-radius:6px; padding:12px 14px; margin-bottom:10px; background:#fff;
+  }
+  .bloc-preco h3{
+    margin:0 0 6px 0; font-size:.85rem; color:var(--bleu-fonce);
+    display:flex; align-items:center; gap:8px;
+  }
+  .num-preco{
+    background:var(--bleu-stcs); color:#fff; width:20px; height:20px; border-radius:50%;
+    display:inline-flex; align-items:center; justify-content:center; font-size:.75rem; flex-shrink:0;
+  }
+  .bloc-preco div[contenteditable]{ font-size:.9rem; line-height:1.5; outline:none; }
+  .bloc-preco div[contenteditable]:focus{ box-shadow:0 0 0 2px var(--bleu-stcs) inset; border-radius:3px; }
+
+  .ref-principes{ font-size:.82rem; color:var(--texte-att); }
+  .ref-principes ol{ margin:8px 0 0 0; padding-left:20px; columns:2; column-gap:24px; }
+  .ref-principes li{ margin-bottom:5px; break-inside:avoid; }
+  details summary{ cursor:pointer; font-size:.85rem; color:var(--bleu-stcs); font-weight:600; margin-bottom:6px;}
+
+  .barre-export{ display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
+
+  .vide{ text-align:center; color:var(--texte-att); padding:30px 0; font-size:.9rem; }
+
+  footer.mentions{
+    max-width:1180px; margin:0 auto; padding:0 20px 30px; font-size:.75rem; color:var(--texte-att); line-height:1.5;
+  }
+
+  @media print{
+    .avertissement, header.banniere p, .form-grid, .barre-export, details, button{ display:none !important; }
+    .panneau{ box-shadow:none; border:none; padding:0; margin-bottom:26px; }
+    body{ padding:0; }
+    header.banniere{ background:#fff !important; color:#000 !important; box-shadow:none; padding:0 0 14px 0; }
+    header.banniere h1{ color:#000; }
+    thead th{ background:#1F5C99 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    tbody tr.prioritaire td{ background:#FCE4D6 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  }
+</style>
+</head>
+<body>
+
+<header class="banniere">
+  <h1>Assistant de préremplissage — Fiche d'Entreprise</h1>
+  <p>Outil de préparation interne STCS — génère une proposition de base à partir du code NAF, à vérifier et compléter lors de la visite</p>
+</header>
+
+<main>
+
+  <div class="avertissement">
+    <strong>À lire avant utilisation :</strong> cet outil propose un contenu <strong>indicatif</strong>, construit à partir d'un profil type par secteur (métiers, risques ED 840 de l'INRS les plus fréquents, formulations de conseils). Il ne s'appuie pas sur des statistiques d'accidentologie réelles d'une entreprise donnée : ces données doivent être vérifiées auprès de la CARSAT/CNAM lors de l'analyse du dossier. Aucun contenu généré ici ne remplace l'observation de terrain ni la validation du médecin du travail. La couverture des codes NAF est volontairement limitée à un socle de secteurs modélisés ; hors de ce socle, un modèle générique à compléter manuellement est proposé.
+  </div>
+
+  <section class="panneau">
+    <h2>1. Paramètres de l'entreprise</h2>
+    <div class="form-grid">
+      <div class="champ">
+        <label for="naf">Code NAF / APE</label>
+        <input type="text" id="naf" list="naf-liste" placeholder="ex : 43.99C">
+        <datalist id="naf-liste"></datalist>
+      </div>
+      <div class="champ petit">
+        <label for="effectif">Effectif total</label>
+        <input type="number" id="effectif" min="0" placeholder="ex : 8">
+      </div>
+      <div class="champ">
+        <label for="nomEntreprise">Nom (facultatif, affichage local uniquement)</label>
+        <input type="text" id="nomEntreprise" placeholder="ex : Entreprise X">
+      </div>
+      <button class="principal" onclick="genererFE()">Générer les tableaux</button>
+    </div>
+    <div id="statutCouverture" class="statut-couverture"></div>
+  </section>
+
+  <section class="panneau">
+    <h2>2. Postes de travail et groupes de postes</h2>
+    <table id="tablePostes">
+      <thead>
+        <tr><th style="width:16%">Groupe</th><th style="width:26%">Intitulé du poste de travail</th><th>Tâches</th><th style="width:12%">Nb de salariés</th><th></th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div id="videPostes" class="vide">Renseignez un code NAF puis cliquez sur « Générer les tableaux ».</div>
+    <button class="mini" style="margin-top:10px;" onclick="ajouterLignePoste()">+ ajouter un poste</button>
+  </section>
+
+  <section class="panneau">
+    <h2>3. Repérage des risques et conseils de prévention</h2>
+    <p style="font-size:.82rem;color:var(--texte-att);margin-top:-6px;">Les lignes surlignées <span class="badge-prio">PRIORITAIRE</span> alimentent automatiquement les préconisations de prévention primaire ci-dessous.</p>
+    <table id="tableRisques">
+      <thead>
+        <tr>
+          <th style="width:15%">Risque (ED 840)</th>
+          <th style="width:12%">Poste(s)</th>
+          <th style="width:24%">Situation de travail / éléments repérés</th>
+          <th style="width:20%">Mesures de prévention existantes</th>
+          <th style="width:24%">Conseil de prévention</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <button class="mini" style="margin-top:10px;" onclick="ajouterLigneRisque()">+ ajouter un risque</button>
+  </section>
+
+  <section class="panneau">
+    <h2>4. Préconisations d'actions de prévention primaire</h2>
+    <div id="blocsPreconisations"></div>
+  </section>
+
+  <section class="panneau">
+    <details>
+      <summary>Rappel — les 9 principes généraux de prévention (art. L.4121-2 du Code du travail)</summary>
+      <div class="ref-principes">
+        <ol>
+          <li>Éviter les risques</li>
+          <li>Évaluer les risques qui ne peuvent être évités</li>
+          <li>Combattre les risques à la source</li>
+          <li>Adapter le travail à l'homme (poste, choix des équipements, méthodes)</li>
+          <li>Tenir compte de l'évolution de la technique</li>
+          <li>Remplacer ce qui est dangereux par ce qui l'est moins</li>
+          <li>Planifier la prévention (technique, organisation, conditions de travail, RPS)</li>
+          <li>Prendre des mesures de protection collective en priorité sur les mesures individuelles</li>
+          <li>Donner les instructions appropriées aux travailleurs</li>
+        </ol>
+      </div>
+    </details>
+  </section>
+
+  <div class="barre-export">
+    <button class="secondaire" onclick="copierTexte()">Copier au format texte</button>
+    <button class="secondaire" onclick="window.print()">Imprimer / export PDF</button>
+    <button class="secondaire" onclick="reinitialiser()">Réinitialiser</button>
+  </div>
+
+</main>
+
+<footer class="mentions">
+  Outil de préparation individuelle — POC interne STCS. Fonctionne entièrement hors ligne (aucune donnée n'est transmise ni enregistrée par cette page). Toute donnée saisie reste uniquement dans le navigateur et disparaît à la fermeture de la page. Les mentions "Non renseigné — à confirmer lors d'une prochaine visite" doivent être conservées telles quelles tant que l'information n'a pas été vérifiée sur site.
+</footer>
+
+<script>
+/* ============================================================
+   BASE DE CONNAISSANCES SECTORIELLE
+   Chaque entrée : postes types + 8 risques ED840 (dont 3 marqués
+   prioritaires) + 3 préconisations de prévention primaire déjà
+   rédigées (ton bienveillant, 30-40 mots, sans débuter par le
+   texte réglementaire).
+   ============================================================ */
+const NAF_DB = {
+
+"1623Z": {
+  label: "Menuiserie — fabrication de charpentes et menuiseries",
+  postes: [
+    {groupe:"Production", poste:"Menuisier d'atelier", taches:"Découpe, assemblage et finition de pièces en bois"},
+    {groupe:"Production", poste:"Opérateur de machines à bois", taches:"Réglage et conduite de machines à commande numérique"},
+    {groupe:"Production", poste:"Poseur de menuiserie", taches:"Installation de menuiseries sur chantier chez les clients"},
+    {groupe:"Encadrement", poste:"Chef d'atelier", taches:"Organisation de la production, contrôle qualité, gestion des stocks"},
+    {groupe:"Support", poste:"Assistant(e) commercial(e)", taches:"Devis, prise de commandes, accueil clients"}
+  ],
+  risques: [
+    {risque:"Risques liés aux équipements de travail", poste:"Opérateur de machines à bois", situation:"Les opérateurs utilisent des scies circulaires et toupies dont les organes coupants restent accessibles", moyens:"", conseil:"Vérifier la conformité des protecteurs de machines (référence INRS ED 6094) — voir stcs.fr rubrique équipements de travail.", prioritaire:true},
+    {risque:"Risques liés au bruit", poste:"Ensemble atelier", situation:"Plusieurs machines à bois (sciage, rabotage, toupillage) fonctionnent simultanément en atelier", moyens:"", conseil:"Réaliser un mesurage de bruit et évaluer le port de protections auditives adaptées (ED 6035, stcs.fr).", prioritaire:true},
+    {risque:"Risques chimiques — poussières de bois", poste:"Ensemble atelier", situation:"Le sciage et le ponçage du bois génèrent des poussières classées cancérogènes", moyens:"", conseil:"Contrôler l'efficacité de l'aspiration à la source sur chaque machine (INRS ED 6099, stcs.fr).", prioritaire:true},
+    {risque:"Risques liés aux TMS et à la manutention", poste:"Menuisier, Poseur", situation:"Les menuisiers manipulent des panneaux et ouvrages de grande dimension", moyens:"", conseil:"Étudier l'usage d'aides à la manutention (ventouses, chariots) — INRS ED 6144.", prioritaire:false},
+    {risque:"Risques de chutes de plain-pied", poste:"Ensemble atelier", situation:"Les copeaux et poussières au sol peuvent générer des glissades en zone de circulation", moyens:"", conseil:"Organiser un nettoyage régulier des allées de circulation de l'atelier (stcs.fr).", prioritaire:false},
+    {risque:"Risques routiers et de déplacement", poste:"Poseur de menuiserie", situation:"Les poseurs se déplacent quotidiennement en véhicule utilitaire vers les chantiers clients", moyens:"", conseil:"Vérifier le suivi d'entretien des véhicules et la formation à la conduite (INRS ED 6110).", prioritaire:false},
+    {risque:"Risques électriques", poste:"Opérateur de machines à bois", situation:"Les machines à bois sont raccordées à une installation électrique triphasée en atelier", moyens:"", conseil:"Faire vérifier périodiquement l'installation électrique par un organisme agréé (stcs.fr).", prioritaire:false},
+    {risque:"Risques psychosociaux — organisation du travail", poste:"Chef d'atelier", situation:"Les délais de pose chez les clients génèrent une charge de travail variable selon les périodes", moyens:"", conseil:"Anticiper la planification de charge en période haute (INRS, guide RPS TPE-PME).", prioritaire:false}
+  ],
+  preconisations: [
+    "Les opérateurs de machines à bois travaillent au contact d'organes coupants et de poussières classées cancérogènes. Un point sur la conformité des protecteurs et l'efficacité de l'aspiration à la source permettrait de sécuriser durablement ces postes ; vous pouvez vous faire accompagner pour cette vérification si besoin.",
+    "Le fonctionnement simultané de plusieurs machines en atelier expose l'équipe à un niveau sonore élevé. Un mesurage de bruit aiderait à objectiver l'exposition réelle et à ajuster, si nécessaire, le port de protections auditives adaptées aux postes concernés.",
+    "La manipulation de panneaux et d'ouvrages volumineux sollicite fortement les menuisiers au quotidien. Étudier des aides à la manutention (ventouses, chariots, diables) pourrait limiter cette contrainte physique et s'inscrit dans une démarche de prévention à la source."
+  ]
+},
+
+"4399C": {
+  label: "Maçonnerie et gros œuvre",
+  postes: [
+    {groupe:"Production", poste:"Maçon", taches:"Pose de parpaings, ferraillage et coulage de dalles"},
+    {groupe:"Production", poste:"Chef d'équipe maçon", taches:"Encadrement d'équipe, contrôle qualité, lecture de plans"},
+    {groupe:"Production", poste:"Manœuvre BTP", taches:"Approvisionnement matériaux, nettoyage de chantier, aide à la pose"},
+    {groupe:"Encadrement", poste:"Conducteur de travaux", taches:"Suivi de chantier, relation clients, gestion des plannings"},
+    {groupe:"Support", poste:"Assistant(e) administratif(ve)", taches:"Facturation, gestion des devis, accueil téléphonique"}
+  ],
+  risques: [
+    {risque:"Risques de chutes de hauteur", poste:"Maçon, Manœuvre", situation:"Les maçons interviennent en hauteur sur échafaudages lors du montage des murs porteurs", moyens:"", conseil:"Vérifier la conformité des échafaudages et l'usage d'un dispositif antichute (ED 6109, stcs.fr).", prioritaire:true},
+    {risque:"Risques liés aux TMS et à la manutention", poste:"Maçon, Manœuvre", situation:"Les maçons manipulent quotidiennement des sacs de liant et des parpaings de forte masse", moyens:"", conseil:"Évaluer le recours à des aides mécaniques de manutention (INRS ED 6144).", prioritaire:true},
+    {risque:"Risques chimiques — poussières de silice", poste:"Maçon", situation:"Le gâchage du ciment et la découpe de matériaux génèrent des poussières de silice cristalline", moyens:"", conseil:"Privilégier la découpe à voie humide ou avec aspiration intégrée (INRS ED 6091).", prioritaire:true},
+    {risque:"Risques liés au bruit", poste:"Ensemble chantier", situation:"Les équipes sont exposées au bruit des engins et outils de chantier (bétonnière, perforateur)", moyens:"", conseil:"Réaliser un mesurage de bruit sur les postes les plus exposés (stcs.fr).", prioritaire:false},
+    {risque:"Risques liés aux vibrations mains-bras", poste:"Maçon", situation:"Les maçons utilisent des outils vibrants (perforateur, meuleuse) plusieurs heures par jour", moyens:"", conseil:"Limiter les temps d'exposition continue et alterner les tâches (INRS ED 863).", prioritaire:false},
+    {risque:"Risques de circulation et coactivité", poste:"Manœuvre", situation:"Les manœuvres circulent à pied à proximité d'engins de chantier en mouvement", moyens:"", conseil:"Formaliser un plan de circulation piétons/engins sur le chantier (stcs.fr).", prioritaire:false},
+    {risque:"Risques électriques", poste:"Ensemble chantier", situation:"Les équipes interviennent parfois à proximité de réseaux électriques enterrés ou aériens", moyens:"", conseil:"Vérifier la réalisation d'une DT-DICT avant travaux (INRS ED 6046).", prioritaire:false},
+    {risque:"Risques psychosociaux — organisation du travail", poste:"Conducteur de travaux", situation:"Les délais de chantier resserrés génèrent une charge de travail variable selon les périodes", moyens:"", conseil:"Anticiper la charge de planification en période de forte activité (guide INRS RPS BTP).", prioritaire:false}
+  ],
+  preconisations: [
+    "Les interventions en hauteur sur échafaudage exposent les équipes à un risque de chute élevé. Vérifier régulièrement la conformité des échafaudages et l'usage effectif d'un dispositif antichute individuel en complément permettrait de sécuriser durablement ces postes.",
+    "Le port répété de charges lourdes (sacs de liant, parpaings) sollicite fortement les maçons. Un point sur les aides mécaniques à la manutention disponibles sur chantier pourrait limiter cette contrainte ; vous pouvez vous faire accompagner pour identifier les solutions adaptées à votre activité.",
+    "Le gâchage et la découpe de matériaux génèrent des poussières de silice cristalline, un enjeu de santé à long terme pour les maçons. Privilégier la découpe à voie humide ou équipée d'une aspiration intégrée constitue une mesure de prévention à la source efficace."
+  ]
+},
+
+"4520A": {
+  label: "Entretien et réparation de véhicules automobiles légers",
+  postes: [
+    {groupe:"Production", poste:"Mécanicien automobile", taches:"Entretien, diagnostic et réparation mécanique des véhicules"},
+    {groupe:"Production", poste:"Carrossier-peintre", taches:"Réparation de carrosserie et application de peinture"},
+    {groupe:"Production", poste:"Électricien automobile", taches:"Diagnostic et réparation des systèmes électriques et électroniques"},
+    {groupe:"Encadrement", poste:"Chef d'atelier", taches:"Organisation de l'atelier, répartition des interventions, contrôle qualité"},
+    {groupe:"Support", poste:"Réceptionnaire", taches:"Accueil clients, prise de rendez-vous, restitution des véhicules"}
+  ],
+  risques: [
+    {risque:"Risques chimiques — solvants et peintures", poste:"Carrossier-peintre", situation:"L'application de peintures et vernis en cabine expose à des composés organiques volatils", moyens:"", conseil:"Contrôler le renouvellement d'air de la cabine de peinture et le port des EPI respiratoires (ED 6008, stcs.fr).", prioritaire:true},
+    {risque:"Risques liés aux équipements de travail", poste:"Mécanicien automobile", situation:"Les mécaniciens utilisent des ponts élévateurs et des outils sous pression au quotidien", moyens:"", conseil:"Vérifier périodiquement les ponts élévateurs et le matériel sous pression (INRS ED 6120).", prioritaire:true},
+    {risque:"Risques liés aux TMS et aux postures", poste:"Mécanicien automobile", situation:"Les mécaniciens travaillent régulièrement en position accroupie ou allongée sous les véhicules", moyens:"", conseil:"Étudier l'usage de sièges roulants et d'aides ergonomiques adaptées (stcs.fr).", prioritaire:true},
+    {risque:"Risques liés au bruit", poste:"Ensemble atelier", situation:"L'atelier est équipé d'outils pneumatiques et de meuleuses générant un niveau sonore élevé", moyens:"", conseil:"Réaliser un mesurage de bruit sur les postes concernés (INRS ED 6035).", prioritaire:false},
+    {risque:"Risques d'incendie et d'explosion", poste:"Ensemble atelier", situation:"L'atelier stocke des carburants, huiles et batteries à proximité des postes de travail", moyens:"", conseil:"Vérifier les conditions de stockage des produits inflammables (INRS ED 6083).", prioritaire:false},
+    {risque:"Risques électriques", poste:"Électricien automobile", situation:"Les électriciens interviennent sur des véhicules électriques et hybrides à haute tension", moyens:"", conseil:"S'assurer de l'habilitation électrique spécifique véhicules électriques du personnel concerné (stcs.fr).", prioritaire:false},
+    {risque:"Risques de circulation", poste:"Ensemble atelier", situation:"Les véhicules clients circulent et manœuvrent au sein de l'atelier et de la cour", moyens:"", conseil:"Organiser un plan de circulation distinguant zones piétons et véhicules (INRS).", prioritaire:false},
+    {risque:"Risques psychosociaux — organisation du travail", poste:"Réceptionnaire", situation:"La gestion simultanée des rendez-vous et des imprévus génère une charge mentale variable", moyens:"", conseil:"Structurer la prise de rendez-vous pour lisser la charge d'accueil (guide INRS RPS TPE-PME).", prioritaire:false}
+  ],
+  preconisations: [
+    "L'application de peintures et vernis en cabine expose les carrossiers-peintres à des composés organiques volatils. Vérifier le bon fonctionnement du renouvellement d'air de la cabine et l'adéquation des protections respiratoires permettrait de limiter durablement cette exposition.",
+    "L'utilisation quotidienne de ponts élévateurs et d'outils sous pression comporte des risques mécaniques pour les mécaniciens. Un contrôle périodique de ces équipements, en complément des vérifications réglementaires, contribue à sécuriser les interventions au poste.",
+    "Le travail prolongé en position accroupie ou allongée sous les véhicules sollicite fortement les mécaniciens. L'usage de sièges roulants et d'aides ergonomiques adaptées pourrait réduire cette contrainte posturale ; une réflexion collective sur l'aménagement des postes serait bénéfique."
+  ]
+},
+
+"5610A": {
+  label: "Restauration traditionnelle",
+  postes: [
+    {groupe:"Cuisine", poste:"Cuisinier", taches:"Préparation, cuisson et dressage des plats"},
+    {groupe:"Cuisine", poste:"Commis de cuisine", taches:"Épluchage, découpe, plonge et aide à la préparation"},
+    {groupe:"Salle", poste:"Serveur(se)", taches:"Accueil clients, prise de commandes, service en salle"},
+    {groupe:"Encadrement", poste:"Chef de cuisine", taches:"Organisation de la brigade, élaboration des menus, gestion des stocks"},
+    {groupe:"Support", poste:"Gérant(e)", taches:"Gestion administrative, commerciale et des ressources humaines"}
+  ],
+  risques: [
+    {risque:"Risques liés aux ambiances thermiques", poste:"Cuisinier", situation:"Les cuisiniers travaillent à proximité de fours, plaques de cuisson et friteuses en fonctionnement continu", moyens:"", conseil:"Évaluer la ventilation et les temps de pause en zone chaude (INRS ED 6027, stcs.fr).", prioritaire:true},
+    {risque:"Risques de coupures", poste:"Cuisinier, Commis de cuisine", situation:"La découpe des aliments s'effectue avec des couteaux et une trancheuse électrique", moyens:"", conseil:"Vérifier l'entretien du tranchant des couteaux et les protections de la trancheuse (stcs.fr).", prioritaire:true},
+    {risque:"Risques de chutes de plain-pied", poste:"Ensemble cuisine", situation:"Le sol de cuisine peut être rendu glissant par les projections de graisse et d'eau", moyens:"", conseil:"Installer un revêtement antidérapant et organiser un nettoyage régulier (INRS ED 6178).", prioritaire:true},
+    {risque:"Risques de brûlures", poste:"Cuisinier", situation:"La manipulation de liquides chauds et de bains de friture expose à des projections brûlantes", moyens:"", conseil:"Vérifier le port de tabliers et gants adaptés à la manipulation de friture (stcs.fr).", prioritaire:false},
+    {risque:"Risques liés à la manutention", poste:"Commis de cuisine", situation:"Le commis porte des bacs et cartons de marchandises lors des livraisons", moyens:"", conseil:"Organiser le stockage pour limiter les ports à hauteur d'épaule (INRS ED 6144).", prioritaire:false},
+    {risque:"Risques liés au bruit", poste:"Ensemble cuisine", situation:"Les hottes d'extraction et équipements de cuisine fonctionnent en continu durant le service", moyens:"", conseil:"Vérifier le niveau sonore en période de coup de feu (stcs.fr).", prioritaire:false},
+    {risque:"Risques biologiques", poste:"Cuisinier", situation:"La manipulation de denrées périssables expose à un risque de contamination microbienne", moyens:"", conseil:"Vérifier le respect de la chaîne du froid et le plan de nettoyage (méthode HACCP).", prioritaire:false},
+    {risque:"Risques psychosociaux — organisation du travail", poste:"Serveur(se)", situation:"Le rythme de service en horaires de pointe génère une charge de travail intense et concentrée", moyens:"", conseil:"Étudier le dimensionnement de l'équipe en salle aux heures de forte affluence (guide INRS RPS).", prioritaire:false}
+  ],
+  preconisations: [
+    "L'exposition continue à la chaleur des fours, plaques et friteuses représente une contrainte quotidienne pour les cuisiniers. Un point sur la ventilation de la zone de cuisson et l'organisation de temps de pause pourrait contribuer à limiter cette pénibilité thermique.",
+    "La découpe des aliments au couteau et à la trancheuse expose l'équipe de cuisine à un risque de coupure récurrent. Vérifier l'entretien régulier du tranchant des couteaux et le bon état des protections de la trancheuse reste une mesure simple et efficace.",
+    "Les sols de cuisine, régulièrement exposés aux projections de graisse et d'eau, favorisent les chutes de plain-pied. L'installation d'un revêtement antidérapant, associée à un nettoyage régulier organisé pendant le service, permettrait de réduire ce risque au quotidien."
+  ]
+},
+
+"1071C": {
+  label: "Boulangerie et boulangerie-pâtisserie",
+  postes: [
+    {groupe:"Production", poste:"Boulanger", taches:"Pétrissage, façonnage et cuisson du pain"},
+    {groupe:"Production", poste:"Pâtissier", taches:"Préparation et décoration de pâtisseries et viennoiseries"},
+    {groupe:"Vente", poste:"Vendeur(se)", taches:"Accueil clients, vente et encaissement en boutique"},
+    {groupe:"Encadrement", poste:"Responsable de production", taches:"Planification de la production, gestion des équipes et des stocks"}
+  ],
+  risques: [
+    {risque:"Risques liés aux ambiances thermiques", poste:"Boulanger", situation:"Les boulangers travaillent à proximité du four dont la chaleur rayonnante est quasi continue", moyens:"", conseil:"Évaluer la ventilation du fournil et l'hydratation pendant les périodes chaudes (stcs.fr).", prioritaire:true},
+    {risque:"Risques liés aux TMS et aux postures", poste:"Boulanger, Pâtissier", situation:"Le pétrissage et le façonnage répétés sollicitent fortement les membres supérieurs", moyens:"", conseil:"Étudier l'organisation des postes de pétrissage pour limiter les gestes répétitifs (INRS ED 6161).", prioritaire:true},
+    {risque:"Risques respiratoires liés aux farines", poste:"Boulanger", situation:"Le tamisage et la manipulation de farine génèrent des poussières inhalables au poste de pétrissage", moyens:"", conseil:"Vérifier l'aspiration à la source au poste de tamisage (INRS ED 6008).", prioritaire:true},
+    {risque:"Risques liés aux horaires atypiques", poste:"Boulanger", situation:"La production démarre tôt le matin ou en horaires de nuit selon l'organisation retenue", moyens:"", conseil:"Suivre les recommandations relatives au travail de nuit avec le médecin du travail.", prioritaire:false},
+    {risque:"Risques de brûlures", poste:"Boulanger", situation:"L'enfournement et le défournement s'effectuent à proximité de surfaces à très haute température", moyens:"", conseil:"Vérifier le port de gants adaptés à la manipulation au four (stcs.fr).", prioritaire:false},
+    {risque:"Risques de coupures", poste:"Pâtissier", situation:"La découpe et le tranchage des préparations s'effectuent avec des lames et trancheuses", moyens:"", conseil:"Vérifier l'entretien et les protections des lames utilisées (INRS).", prioritaire:false},
+    {risque:"Risques de chutes de plain-pied", poste:"Ensemble fournil", situation:"Le sol du fournil peut être rendu glissant par la farine et les résidus de pâte", moyens:"", conseil:"Organiser un nettoyage régulier des zones de circulation du fournil (stcs.fr).", prioritaire:false},
+    {risque:"Risques psychosociaux — organisation du travail", poste:"Vendeur(se)", situation:"Les horaires décalés et le contact client continu génèrent une charge de travail variable", moyens:"", conseil:"Veiller à l'articulation des plannings entre production et vente (guide INRS RPS).", prioritaire:false}
+  ],
+  preconisations: [
+    "La proximité constante avec le four expose les boulangers à une chaleur rayonnante quasi continue tout au long du service. Évaluer la ventilation du fournil et veiller à une hydratation régulière pendant les périodes les plus chaudes contribuerait à limiter cette pénibilité.",
+    "Le pétrissage et le façonnage répétés sollicitent fortement les membres supérieurs des boulangers et pâtissiers au fil de la journée. Une réflexion sur l'organisation des postes de pétrissage pourrait aider à limiter l'exposition aux gestes répétitifs.",
+    "Le tamisage et la manipulation de farine génèrent des poussières inhalables au poste de pétrissage. Vérifier l'efficacité de l'aspiration à la source à cet endroit constitue une mesure de prévention simple à mettre en œuvre et à maintenir dans le temps."
+  ]
+},
+
+"4771Z": {
+  label: "Commerce de détail (habillement, chaussures, optique et assimilés)",
+  postes: [
+    {groupe:"Vente", poste:"Vendeur(se) conseil", taches:"Accueil clients, conseil, mise en rayon, encaissement"},
+    {groupe:"Encadrement", poste:"Responsable de magasin", taches:"Gestion de l'équipe, des stocks et des objectifs commerciaux"},
+    {groupe:"Support", poste:"Employé(e) de réserve", taches:"Réception, déballage et rangement des livraisons"}
+  ],
+  risques: [
+    {risque:"Risques liés aux TMS et aux postures", poste:"Vendeur(se) conseil", situation:"Les vendeurs restent debout de façon prolongée et effectuent des gestes répétés de rangement", moyens:"", conseil:"Étudier l'alternance des tâches en poste debout prolongé (INRS ED 6161, stcs.fr).", prioritaire:true},
+    {risque:"Risques liés à la manutention", poste:"Employé(e) de réserve", situation:"La réception de livraisons implique le port répété de cartons et de rouleaux de marchandises", moyens:"", conseil:"Prévoir des aides à la manutention (diable, transpalette) en réserve (INRS ED 6144).", prioritaire:true},
+    {risque:"Risques psychosociaux — relation avec le public", poste:"Vendeur(se) conseil", situation:"L'exposition continue au public peut inclure des situations de tension avec la clientèle", moyens:"", conseil:"Mettre en place une procédure de gestion des situations tendues avec les clients (INRS ED 6250).", prioritaire:true},
+    {risque:"Risques de chutes de plain-pied", poste:"Ensemble magasin", situation:"La manipulation de cartons en réserve et les sols encombrés favorisent les chutes", moyens:"", conseil:"Organiser le rangement de la réserve pour dégager les zones de circulation (stcs.fr).", prioritaire:false},
+    {risque:"Risques liés au travail en hauteur limité", poste:"Vendeur(se) conseil", situation:"La mise en rayon en hauteur s'effectue parfois à l'aide d'un escabeau", moyens:"", conseil:"Vérifier la conformité et l'usage systématique de l'escabeau plutôt que d'un support improvisé (INRS).", prioritaire:false},
+    {risque:"Risques électriques", poste:"Employé(e) de réserve", situation:"Le déballage de marchandises électroniques implique une manipulation ponctuelle de câbles et prises", moyens:"", conseil:"Sensibiliser aux vérifications visuelles avant branchement de matériel (stcs.fr).", prioritaire:false},
+    {risque:"Risques liés à l'ambiance visuelle", poste:"Vendeur(se) conseil", situation:"L'éclairage artificiel prolongé en boutique peut solliciter la fatigue visuelle", moyens:"", conseil:"Vérifier l'adéquation de l'éclairage aux postes de caisse et de vente (INRS ED 6172).", prioritaire:false},
+    {risque:"Risques d'agression", poste:"Vendeur(se) conseil", situation:"La manipulation d'espèces en caisse expose ponctuellement à un risque de vol avec violence", moyens:"", conseil:"Vérifier les procédures de sécurité en caisse et lors des fermetures (stcs.fr).", prioritaire:false}
+  ],
+  preconisations: [
+    "La station debout prolongée associée à des gestes répétés de mise en rayon sollicite fortement les vendeurs au fil de la journée. Étudier des possibilités d'alternance des tâches permettrait de limiter cette contrainte posturale sur la durée.",
+    "La réception des livraisons implique le port répété de cartons en réserve, une activité physique parfois sous-estimée dans le commerce de détail. La mise à disposition d'aides à la manutention (diable, transpalette) pourrait réduire sensiblement cette charge.",
+    "Le contact continu avec le public expose ponctuellement les vendeurs à des situations de tension avec la clientèle. Formaliser une procédure simple de gestion de ces situations, partagée avec l'équipe, aiderait à mieux les anticiper et à en limiter l'impact."
+  ]
+},
+
+"6831Z": {
+  label: "Agences immobilières",
+  postes: [
+    {groupe:"Commercial", poste:"Négociateur(trice) immobilier(ère)", taches:"Prospection, visites de biens, négociation avec les clients"},
+    {groupe:"Encadrement", poste:"Responsable d'agence", taches:"Gestion de l'équipe, suivi des dossiers, développement commercial"},
+    {groupe:"Support", poste:"Assistant(e) administratif(ve)", taches:"Gestion des dossiers, rédaction d'actes, accueil clients"}
+  ],
+  risques: [
+    {risque:"Risques psychosociaux — pression commerciale", poste:"Négociateur(trice) immobilier(ère)", situation:"Les négociateurs sont soumis à des objectifs de vente et de prise de rendez-vous réguliers", moyens:"", conseil:"Échanger périodiquement sur la charge commerciale ressentie (guide INRS RPS TPE-PME, stcs.fr).", prioritaire:true},
+    {risque:"Risques routiers", poste:"Négociateur(trice) immobilier(ère)", situation:"Les négociateurs effectuent de nombreux déplacements en véhicule pour les visites de biens", moyens:"", conseil:"Vérifier le suivi d'entretien des véhicules et rappeler les bonnes pratiques de conduite (INRS ED 6110).", prioritaire:true},
+    {risque:"Risques psychosociaux — isolement lors des visites", poste:"Négociateur(trice) immobilier(ère)", situation:"Les visites de biens vacants s'effectuent parfois seul avec un client inconnu", moyens:"", conseil:"Mettre en place un dispositif de signalement de présence lors des visites isolées (stcs.fr).", prioritaire:true},
+    {risque:"Risques liés au travail sur écran", poste:"Assistant(e) administratif(ve)", situation:"Le poste administratif implique un travail prolongé sur écran pour la gestion des dossiers", moyens:"", conseil:"Veiller à l'ergonomie du poste de travail sur écran (INRS ED 6172).", prioritaire:false},
+    {risque:"Risques de chutes lors des visites", poste:"Négociateur(trice) immobilier(ère)", situation:"Les visites de biens en travaux ou vacants exposent à des sols instables ou non sécurisés", moyens:"", conseil:"Sensibiliser à la vigilance lors des visites de biens non entretenus (stcs.fr).", prioritaire:false},
+    {risque:"Risques psychosociaux — organisation du travail", poste:"Responsable d'agence", situation:"La gestion simultanée de plusieurs dossiers et échéances génère une charge mentale variable", moyens:"", conseil:"Anticiper la répartition de la charge de dossiers au sein de l'équipe (guide INRS RPS).", prioritaire:false}
+  ],
+  preconisations: [
+    "Les négociateurs évoluent sous une pression commerciale continue liée aux objectifs de vente et de rendez-vous. Un temps d'échange régulier sur la charge ressentie et l'organisation des plannings pourrait contribuer à mieux réguler cette pression au quotidien pour l'ensemble de l'équipe.",
+    "Les déplacements fréquents en véhicule pour les visites de biens exposent les négociateurs à un risque routier souvent sous-estimé dans ce métier. Vérifier le suivi d'entretien des véhicules et rappeler les bonnes pratiques de conduite reste une mesure de prévention simple et utile.",
+    "Les visites de biens vacants ou en travaux, parfois réalisées seul avec un client inconnu, comportent un risque d'isolement. Mettre en place un dispositif de signalement de présence ou de suivi des rendez-vous pourrait renforcer la sécurité des négociateurs sur le terrain."
+  ]
+},
+
+"9609Z": {
+  label: "Autres services personnels n.c.a.",
+  postes: [
+    {groupe:"Production", poste:"Agent(e) de service à la personne", taches:"Prestation de services personnalisés au domicile ou en institut"},
+    {groupe:"Encadrement", poste:"Responsable d'activité", taches:"Organisation des interventions, gestion des plannings et du matériel"}
+  ],
+  risques: [
+    {risque:"Risques liés aux TMS et aux postures", poste:"Agent(e) de service à la personne", situation:"L'activité implique des postures maintenues ou répétées selon la prestation réalisée", moyens:"", conseil:"Étudier l'organisation du poste pour limiter les postures contraignantes (INRS ED 6161).", prioritaire:true},
+    {risque:"Risques chimiques", poste:"Agent(e) de service à la personne", situation:"L'utilisation de produits d'entretien ou de soin expose au contact cutané et à l'inhalation", moyens:"", conseil:"Vérifier les fiches de données de sécurité des produits utilisés (INRS, stcs.fr).", prioritaire:true},
+    {risque:"Risques routiers", poste:"Agent(e) de service à la personne", situation:"Les interventions à domicile impliquent des déplacements fréquents en véhicule dans la journée", moyens:"", conseil:"Rappeler les bonnes pratiques de conduite et le suivi des véhicules (INRS ED 6110).", prioritaire:true},
+    {risque:"Risques biologiques", poste:"Agent(e) de service à la personne", situation:"Le contact rapproché avec la clientèle expose à un risque de transmission microbienne", moyens:"", conseil:"Rappeler les règles d'hygiène et de lavage des mains entre interventions (stcs.fr).", prioritaire:false},
+    {risque:"Risques psychosociaux — isolement", poste:"Agent(e) de service à la personne", situation:"Les interventions seules chez des particuliers peuvent générer un sentiment d'isolement professionnel", moyens:"", conseil:"Organiser des temps d'échange collectifs réguliers avec l'équipe (guide INRS RPS).", prioritaire:false},
+    {risque:"Risques électriques", poste:"Agent(e) de service à la personne", situation:"L'utilisation d'appareils électriques portatifs s'effectue dans des environnements variés et non maîtrisés", moyens:"", conseil:"Sensibiliser à la vérification visuelle du matériel avant usage (stcs.fr).", prioritaire:false}
+  ],
+  preconisations: [
+    "L'activité implique des postures maintenues ou répétées qui varient selon la prestation réalisée. Étudier l'organisation des interventions pour limiter les postures les plus contraignantes contribuerait à préserver la santé physique des agents sur la durée.",
+    "L'utilisation quotidienne de produits d'entretien ou de soin expose les agents à un contact cutané ou à une inhalation répétée. Vérifier les fiches de données de sécurité des produits utilisés et adapter les équipements de protection permettrait de limiter cette exposition.",
+    "Les déplacements fréquents en véhicule entre les lieux d'intervention exposent les agents à un risque routier au quotidien. Rappeler les bonnes pratiques de conduite et assurer un suivi régulier de l'entretien des véhicules reste une mesure de prévention accessible et utile."
+  ]
+},
+
+"9602A": {
+  label: "Coiffure",
+  postes: [
+    {groupe:"Production", poste:"Coiffeur(se)", taches:"Coupe, coloration, coiffage et conseil clientèle"},
+    {groupe:"Encadrement", poste:"Responsable de salon", taches:"Gestion de l'équipe, des stocks et de la clientèle"}
+  ],
+  risques: [
+    {risque:"Risques liés aux TMS et aux postures", poste:"Coiffeur(se)", situation:"Les coiffeurs travaillent bras levés au-dessus des épaules une grande partie de la journée", moyens:"", conseil:"Étudier l'aménagement du poste et l'alternance des tâches (INRS ED 6161, stcs.fr).", prioritaire:true},
+    {risque:"Risques chimiques — produits capillaires", poste:"Coiffeur(se)", situation:"La manipulation quotidienne de teintures, décolorants et produits de permanente expose par contact et inhalation", moyens:"", conseil:"Vérifier le port de gants adaptés et la ventilation du salon (INRS ED 6113).", prioritaire:true},
+    {risque:"Risques cutanés", poste:"Coiffeur(se)", situation:"Le lavage répété des cheveux et le port de gants humides favorisent les irritations cutanées des mains", moyens:"", conseil:"Prévoir des gants adaptés et des soins protecteurs pour les mains (INRS ED 6113).", prioritaire:true},
+    {risque:"Risques liés à la station debout prolongée", poste:"Coiffeur(se)", situation:"Les coiffeurs restent debout la quasi-totalité de la journée de travail", moyens:"", conseil:"Étudier l'usage de tapis anti-fatigue au poste de travail (stcs.fr).", prioritaire:false},
+    {risque:"Risques liés au bruit", poste:"Coiffeur(se)", situation:"Les séchoirs utilisés en continu génèrent un niveau sonore soutenu dans le salon", moyens:"", conseil:"Évaluer le niveau sonore aux heures de forte affluence (INRS).", prioritaire:false},
+    {risque:"Risques électriques", poste:"Coiffeur(se)", situation:"Le salon utilise de nombreux appareils électriques à proximité de points d'eau", moyens:"", conseil:"Faire vérifier périodiquement l'installation électrique du salon (stcs.fr).", prioritaire:false},
+    {risque:"Risques psychosociaux — relation clientèle", poste:"Coiffeur(se)", situation:"Le contact continu avec la clientèle sur des amplitudes horaires soutenues peut générer une fatigue relationnelle", moyens:"", conseil:"Veiller à l'aménagement de temps de pause entre les rendez-vous (guide INRS RPS).", prioritaire:false}
+  ],
+  preconisations: [
+    "Les coiffeurs travaillent une grande partie de la journée les bras levés au-dessus des épaules, une posture particulièrement contraignante à long terme. Étudier l'aménagement du poste et l'alternance des tâches permettrait de limiter cette sollicitation physique répétée.",
+    "La manipulation quotidienne de teintures, décolorants et produits de permanente expose les coiffeurs par contact cutané et inhalation. Vérifier le port systématique de gants adaptés et la qualité de la ventilation du salon contribuerait à réduire cette exposition chimique.",
+    "Le lavage répété des cheveux et le port prolongé de gants humides favorisent les irritations cutanées des mains chez les coiffeurs. Prévoir des gants bien adaptés et des soins protecteurs réguliers permettrait de préserver la peau sur la durée."
+  ]
+},
+
+"8219Z": {
+  label: "Photocopie, préparation de documents et soutien de bureau",
+  postes: [
+    {groupe:"Production", poste:"Opérateur(trice) de reprographie", taches:"Impression, façonnage et préparation de documents"},
+    {groupe:"Support", poste:"Assistant(e) administratif(ve)", taches:"Saisie, mise en forme et suivi des commandes clients"}
+  ],
+  risques: [
+    {risque:"Risques liés aux TMS et au travail sur écran", poste:"Assistant(e) administratif(ve)", situation:"Le poste implique un travail prolongé sur écran et au clavier tout au long de la journée", moyens:"", conseil:"Veiller à l'ergonomie du poste de travail sur écran (INRS ED 6172).", prioritaire:true},
+    {risque:"Risques chimiques — toners et encres", poste:"Opérateur(trice) de reprographie", situation:"Le remplacement des cartouches et toners expose ponctuellement à des poussières et particules fines", moyens:"", conseil:"Manipuler les cartouches selon les consignes du fabricant et aérer le local (stcs.fr).", prioritaire:true},
+    {risque:"Risques liés à la manutention", poste:"Opérateur(trice) de reprographie", situation:"La manipulation de rames de papier et de matériel d'impression sollicite le port de charges répété", moyens:"", conseil:"Organiser le stockage du papier pour limiter les ports à hauteur d'épaule (INRS ED 6144).", prioritaire:true},
+    {risque:"Risques liés au bruit", poste:"Opérateur(trice) de reprographie", situation:"Les machines de reprographie en fonctionnement continu génèrent un bruit de fond en atelier", moyens:"", conseil:"Évaluer le niveau sonore en période de production intense (stcs.fr).", prioritaire:false},
+    {risque:"Risques psychosociaux — organisation du travail", poste:"Assistant(e) administratif(ve)", situation:"Les délais de production de documents peuvent générer une charge de travail ponctuellement intense", moyens:"", conseil:"Anticiper la planification de charge en période de forte demande (guide INRS RPS).", prioritaire:false}
+  ],
+  preconisations: [
+    "Le poste administratif implique un travail prolongé sur écran et au clavier tout au long de la journée. Veiller à l'ergonomie du poste (écran, siège, éclairage) contribuerait à limiter la fatigue visuelle et les tensions musculaires associées à cette activité.",
+    "Le remplacement des cartouches et toners expose ponctuellement les opérateurs à des poussières et particules fines. Manipuler ce matériel selon les consignes du fabricant et veiller à l'aération du local de reprographie permettrait de limiter cette exposition.",
+    "La manipulation répétée de rames de papier et de matériel d'impression sollicite le dos des opérateurs au quotidien. Organiser le stockage du papier pour limiter les ports à hauteur d'épaule constitue une mesure simple et concrète à mettre en place."
+  ]
+},
+
+"4711D": {
+  label: "Commerce de détail d'alimentation générale (supérette)",
+  postes: [
+    {groupe:"Vente", poste:"Employé(e) libre-service", taches:"Mise en rayon, étiquetage et réapprovisionnement des produits"},
+    {groupe:"Vente", poste:"Caissier(ère)", taches:"Encaissement, accueil et information de la clientèle"},
+    {groupe:"Encadrement", poste:"Responsable de magasin", taches:"Gestion de l'équipe, des commandes et des objectifs commerciaux"}
+  ],
+  risques: [
+    {risque:"Risques liés aux TMS et à la manutention", poste:"Employé(e) libre-service", situation:"La mise en rayon implique le port répété de cartons et de produits lourds", moyens:"", conseil:"Étudier l'usage de diables et de rolls pour limiter le port manuel (INRS ED 6144).", prioritaire:true},
+    {risque:"Risques liés au froid", poste:"Employé(e) libre-service", situation:"Le réapprovisionnement des chambres froides et rayons réfrigérés expose à des variations thermiques répétées", moyens:"", conseil:"Prévoir des vêtements adaptés pour les interventions en chambre froide (stcs.fr).", prioritaire:true},
+    {risque:"Risques psychosociaux — relation clientèle", poste:"Caissier(ère)", situation:"Le poste de caisse implique une exposition continue au public en horaires soutenus", moyens:"", conseil:"Prévoir des temps de pause réguliers au poste de caisse (guide INRS RPS).", prioritaire:true},
+    {risque:"Risques de coupures", poste:"Employé(e) libre-service", situation:"Le déballage de cartons au cutter expose à un risque de coupure", moyens:"", conseil:"Mettre à disposition des cutters à lame rétractable sécurisée (stcs.fr).", prioritaire:false},
+    {risque:"Risques de chutes de plain-pied", poste:"Ensemble magasin", situation:"Les zones de réserve et de vente peuvent être encombrées lors des livraisons", moyens:"", conseil:"Organiser le rangement des livraisons pour dégager les zones de circulation (INRS).", prioritaire:false},
+    {risque:"Risques électriques", poste:"Employé(e) libre-service", situation:"Le réapprovisionnement des équipements frigorifiques s'effectue à proximité d'installations électriques", moyens:"", conseil:"Faire vérifier périodiquement les installations frigorifiques et électriques (stcs.fr).", prioritaire:false},
+    {risque:"Risques d'agression", poste:"Caissier(ère)", situation:"La manipulation d'espèces en caisse expose ponctuellement à un risque de vol", moyens:"", conseil:"Vérifier les procédures de sécurité en caisse et lors des fermetures (INRS ED 6250).", prioritaire:false}
+  ],
+  preconisations: [
+    "La mise en rayon implique le port répété de cartons et de produits parfois lourds tout au long de la journée. Étudier l'usage systématique de diables ou de rolls pour limiter le port manuel contribuerait à réduire cette sollicitation physique pour l'équipe.",
+    "Le réapprovisionnement des chambres froides et rayons réfrigérés expose les employés à des variations thermiques répétées. Prévoir des vêtements adaptés à ces interventions permettrait de limiter cette contrainte, en particulier lors des passages fréquents entre zones tempérées et froides.",
+    "Le poste de caisse implique une exposition continue au public sur des horaires parfois soutenus. Prévoir des temps de pause réguliers et une rotation entre les postes de caisse et de rayon pourrait contribuer à mieux répartir cette charge relationnelle."
+  ]
+},
+
+"4773Z": {
+  label: "Commerce de détail de produits pharmaceutiques (pharmacie)",
+  postes: [
+    {groupe:"Production", poste:"Préparateur(trice) en pharmacie", taches:"Délivrance, préparation et conseil sur les produits pharmaceutiques"},
+    {groupe:"Encadrement", poste:"Pharmacien(ne)", taches:"Validation des ordonnances, conseil et gestion de l'officine"},
+    {groupe:"Vente", poste:"Adjoint(e) de vente", taches:"Vente en parapharmacie, encaissement et accueil clientèle"}
+  ],
+  risques: [
+    {risque:"Risques chimiques", poste:"Préparateur(trice) en pharmacie", situation:"La préparation de certains produits expose à un contact avec des substances actives ou allergisantes", moyens:"", conseil:"Vérifier le respect des protocoles de préparation et le port des EPI adaptés (INRS, stcs.fr).", prioritaire:true},
+    {risque:"Risques biologiques", poste:"Préparateur(trice) en pharmacie", situation:"La manipulation de dispositifs médicaux et de prélèvements expose à un risque de contact biologique", moyens:"", conseil:"Rappeler les règles d'hygiène et d'élimination des déchets d'activité de soins (stcs.fr).", prioritaire:true},
+    {risque:"Risques psychosociaux — relation clientèle", poste:"Adjoint(e) de vente", situation:"Le contact continu avec une clientèle parfois en situation de vulnérabilité génère une charge relationnelle", moyens:"", conseil:"Organiser des temps d'échange sur les situations difficiles rencontrées en comptoir (guide INRS RPS).", prioritaire:true},
+    {risque:"Risques liés à la manutention", poste:"Préparateur(trice) en pharmacie", situation:"La réception et le rangement des commandes impliquent le port de cartons de médicaments", moyens:"", conseil:"Organiser le stockage pour limiter les ports répétés à hauteur d'épaule (INRS ED 6144).", prioritaire:false},
+    {risque:"Risques liés au travail sur écran", poste:"Pharmacien(ne)", situation:"La gestion des dossiers patients et des commandes s'effectue en grande partie sur écran", moyens:"", conseil:"Veiller à l'ergonomie du poste informatique du comptoir (INRS ED 6172).", prioritaire:false},
+    {risque:"Risques d'agression", poste:"Adjoint(e) de vente", situation:"La manipulation d'espèces et de médicaments sensibles expose ponctuellement à un risque de vol", moyens:"", conseil:"Vérifier les procédures de sécurité en caisse et lors des fermetures (INRS ED 6250).", prioritaire:false}
+  ],
+  preconisations: [
+    "La préparation de certains produits expose les préparateurs à un contact avec des substances actives ou allergisantes. Vérifier le respect des protocoles de préparation et la disponibilité d'équipements de protection adaptés contribuerait à sécuriser durablement ce poste.",
+    "La manipulation de dispositifs médicaux et de prélèvements expose l'équipe à un risque de contact biologique au comptoir. Rappeler régulièrement les règles d'hygiène et les modalités d'élimination des déchets d'activité de soins reste une mesure de prévention essentielle.",
+    "Le contact continu avec une clientèle parfois en situation de vulnérabilité ou de détresse génère une charge relationnelle particulière pour l'équipe officinale. Organiser des temps d'échange internes sur les situations difficiles rencontrées pourrait contribuer à mieux les accompagner."
+  ]
+},
+
+"5610C": {
+  label: "Restauration de type rapide",
+  postes: [
+    {groupe:"Production", poste:"Équipier(ère) polyvalent(e)", taches:"Préparation, cuisson et service des commandes en continu"},
+    {groupe:"Encadrement", poste:"Responsable de restaurant", taches:"Organisation de l'équipe, gestion des stocks et du service"}
+  ],
+  risques: [
+    {risque:"Risques de brûlures", poste:"Équipier(ère) polyvalent(e)", situation:"La friture et la cuisson en continu exposent à des projections et surfaces chaudes", moyens:"", conseil:"Vérifier le port d'EPI adaptés au poste de friture (INRS ED 6027, stcs.fr).", prioritaire:true},
+    {risque:"Risques liés aux TMS et à la cadence", poste:"Équipier(ère) polyvalent(e)", situation:"Le rythme de production en période de forte affluence impose des gestes répétés et rapides", moyens:"", conseil:"Étudier la rotation des postes durant le service pour limiter la répétitivité (stcs.fr).", prioritaire:true},
+    {risque:"Risques de chutes de plain-pied", poste:"Équipier(ère) polyvalent(e)", situation:"Le sol de cuisine peut être rendu glissant par les graisses de cuisson", moyens:"", conseil:"Installer un revêtement antidérapant et organiser un nettoyage régulier (INRS ED 6178).", prioritaire:true},
+    {risque:"Risques de coupures", poste:"Équipier(ère) polyvalent(e)", situation:"La préparation des ingrédients s'effectue avec des couteaux et trancheuses", moyens:"", conseil:"Vérifier l'entretien du tranchant et les protections des équipements (stcs.fr).", prioritaire:false},
+    {risque:"Risques liés au bruit", poste:"Équipier(ère) polyvalent(e)", situation:"Les équipements de cuisson et de ventilation fonctionnent en continu durant le service", moyens:"", conseil:"Évaluer le niveau sonore aux heures de forte affluence (INRS).", prioritaire:false},
+    {risque:"Risques psychosociaux — cadence et clientèle", poste:"Équipier(ère) polyvalent(e)", situation:"Les périodes de forte affluence cumulent cadence de production élevée et contact avec la clientèle", moyens:"", conseil:"Adapter le dimensionnement de l'équipe aux heures de pointe (guide INRS RPS).", prioritaire:false},
+    {risque:"Risques liés aux horaires atypiques", poste:"Équipier(ère) polyvalent(e)", situation:"L'amplitude d'ouverture implique des horaires tardifs ou fractionnés selon les équipes", moyens:"", conseil:"Veiller à l'organisation des plannings et au temps de repos entre services (stcs.fr).", prioritaire:false}
+  ],
+  preconisations: [
+    "La friture et la cuisson en continu exposent les équipiers à des projections et des surfaces à haute température tout au long du service. Vérifier la disponibilité et le port d'équipements de protection adaptés au poste de friture permettrait de limiter ce risque de brûlure.",
+    "Le rythme de production en période de forte affluence impose des gestes répétés et rapides à l'ensemble de l'équipe. Étudier une rotation des postes durant le service pourrait contribuer à limiter l'exposition prolongée aux mêmes gestes.",
+    "Le sol de cuisine, régulièrement exposé aux graisses de cuisson, favorise les chutes de plain-pied en période de rush. L'installation d'un revêtement antidérapant, associée à un nettoyage organisé pendant le service, permettrait de réduire ce risque au quotidien."
+  ]
+},
+
+"4332A": {
+  label: "Travaux de menuiserie bois et PVC (pose)",
+  postes: [
+    {groupe:"Production", poste:"Poseur(se) de menuiserie", taches:"Installation de fenêtres, portes et volets chez les clients"},
+    {groupe:"Encadrement", poste:"Chef d'équipe pose", taches:"Organisation des chantiers, contrôle qualité, relation clients"}
+  ],
+  risques: [
+    {risque:"Risques de chutes de hauteur", poste:"Poseur(se) de menuiserie", situation:"Les poseurs interviennent parfois en hauteur sur échelle ou nacelle lors de la pose en étage", moyens:"", conseil:"Vérifier la conformité des équipements d'accès en hauteur (INRS ED 6109, stcs.fr).", prioritaire:true},
+    {risque:"Risques liés aux TMS et à la manutention", poste:"Poseur(se) de menuiserie", situation:"La pose de menuiseries volumineuses implique le port de charges à plusieurs", moyens:"", conseil:"Étudier l'usage de ventouses de manutention pour les vitrages lourds (INRS ED 6144).", prioritaire:true},
+    {risque:"Risques routiers", poste:"Poseur(se) de menuiserie", situation:"Les poseurs se déplacent quotidiennement en véhicule utilitaire vers les chantiers", moyens:"", conseil:"Vérifier le suivi d'entretien des véhicules utilitaires (INRS ED 6110).", prioritaire:true},
+    {risque:"Risques liés aux outils portatifs", poste:"Poseur(se) de menuiserie", situation:"Le perçage et la découpe d'ajustement s'effectuent avec des outils électroportatifs", moyens:"", conseil:"Vérifier la conformité et l'entretien des outils électroportatifs (stcs.fr).", prioritaire:false},
+    {risque:"Risques chimiques", poste:"Poseur(se) de menuiserie", situation:"L'application de mousse polyuréthane et de mastics d'étanchéité expose ponctuellement par inhalation", moyens:"", conseil:"Vérifier l'aération lors de l'application de mousses et mastics (INRS ED 6008).", prioritaire:false},
+    {risque:"Risques de coupures", poste:"Poseur(se) de menuiserie", situation:"La manipulation de vitrages et profilés expose à un risque de coupure", moyens:"", conseil:"Prévoir des gants anti-coupure pour la manipulation de vitrages (stcs.fr).", prioritaire:false},
+    {risque:"Risques électriques", poste:"Poseur(se) de menuiserie", situation:"Les interventions se déroulent parfois à proximité d'installations électriques existantes chez le client", moyens:"", conseil:"Sensibiliser à la vigilance vis-à-vis des installations existantes (INRS).", prioritaire:false}
+  ],
+  preconisations: [
+    "Les interventions en hauteur sur échelle ou nacelle lors de la pose en étage exposent les poseurs à un risque de chute. Vérifier systématiquement la conformité des équipements d'accès utilisés permettrait de sécuriser durablement ces interventions chez les clients.",
+    "La pose de menuiseries volumineuses (fenêtres, portes, vitrages) sollicite fortement le dos des poseurs lors du port à plusieurs. Étudier l'usage de ventouses de manutention pour les éléments les plus lourds pourrait réduire sensiblement cette contrainte physique.",
+    "Les déplacements quotidiens en véhicule utilitaire entre les chantiers exposent les poseurs à un risque routier régulier. Assurer un suivi rigoureux de l'entretien des véhicules et rappeler les bonnes pratiques de conduite reste une mesure de prévention accessible."
+  ]
+},
+
+"7112B": {
+  label: "Ingénierie, études techniques (hors structures du bâtiment)",
+  postes: [
+    {groupe:"Études", poste:"Ingénieur(e) d'études", taches:"Conception, calculs et suivi technique de projets"},
+    {groupe:"Études", poste:"Technicien(ne) de bureau d'études", taches:"Réalisation de plans, relevés et documents techniques"},
+    {groupe:"Encadrement", poste:"Chargé(e) de projet", taches:"Coordination de projets, relation clients, suivi des délais"}
+  ],
+  risques: [
+    {risque:"Risques liés aux TMS et au travail sur écran", poste:"Ingénieur(e) d'études", situation:"Le poste implique un travail prolongé sur écran pour la conception et les études techniques", moyens:"", conseil:"Veiller à l'ergonomie du poste de travail sur écran (INRS ED 6172).", prioritaire:true},
+    {risque:"Risques psychosociaux — charge de projet", poste:"Chargé(e) de projet", situation:"La gestion simultanée de plusieurs projets et délais génère une charge mentale variable", moyens:"", conseil:"Anticiper la charge de projets en amont des périodes de forte activité (guide INRS RPS).", prioritaire:true},
+    {risque:"Risques routiers et liés aux déplacements", poste:"Ingénieur(e) d'études", situation:"Les visites de sites ou de chantiers impliquent des déplacements réguliers en véhicule", moyens:"", conseil:"Vérifier le suivi d'entretien des véhicules et l'organisation des trajets (INRS ED 6110).", prioritaire:true},
+    {risque:"Risques liés aux visites de site", poste:"Ingénieur(e) d'études", situation:"Les visites sur chantiers en cours de travaux exposent aux risques propres à ces environnements", moyens:"", conseil:"Vérifier le port des EPI adaptés lors des visites de chantier (stcs.fr).", prioritaire:false},
+    {risque:"Risques liés à l'ambiance de bureau", poste:"Technicien(ne) de bureau d'études", situation:"Le travail prolongé en open space peut être affecté par le bruit ambiant et l'éclairage", moyens:"", conseil:"Évaluer l'ambiance sonore et lumineuse des espaces de travail partagés (INRS).", prioritaire:false}
+  ],
+  preconisations: [
+    "Le travail de conception et d'études techniques implique un temps prolongé passé sur écran chaque jour. Veiller à l'ergonomie du poste de travail (écran, siège, éclairage) contribuerait à limiter la fatigue visuelle et les tensions musculaires liées à cette activité.",
+    "La gestion simultanée de plusieurs projets et de leurs délais respectifs génère une charge mentale variable selon les périodes. Anticiper la répartition de la charge de projets en amont des périodes de forte activité pourrait aider à mieux la réguler au sein de l'équipe.",
+    "Les visites de sites ou de chantiers impliquent des déplacements réguliers en véhicule pour les ingénieurs d'études. Vérifier le suivi d'entretien des véhicules et organiser les trajets avec anticipation reste une mesure de prévention utile face au risque routier."
+  ]
+},
+
+"4332B": {
+  label: "Travaux de menuiserie métallique et serrurerie",
+  postes: [
+    {groupe:"Production", poste:"Serrurier(ère)-métallier(ère)", taches:"Fabrication et assemblage d'ouvrages métalliques sur mesure"},
+    {groupe:"Production", poste:"Soudeur(se)", taches:"Soudage et assemblage de structures métalliques"},
+    {groupe:"Production", poste:"Poseur(se) métallerie", taches:"Installation de portails, garde-corps et structures métalliques"}
+  ],
+  risques: [
+    {risque:"Risques de brûlures et rayonnement lié au soudage", poste:"Soudeur(se)", situation:"Le soudage à l'arc expose aux projections, aux brûlures et au rayonnement UV", moyens:"", conseil:"Vérifier le port d'EPI de soudage complets (masque, gants, tablier) — INRS ED 6132.", prioritaire:true},
+    {risque:"Risques chimiques — fumées de soudage", poste:"Soudeur(se)", situation:"Le soudage génère des fumées métalliques inhalées à proximité du poste de travail", moyens:"", conseil:"Vérifier l'aspiration des fumées de soudage à la source (INRS ED 6132).", prioritaire:true},
+    {risque:"Risques liés aux équipements de travail", poste:"Serrurier(ère)-métallier(ère)", situation:"L'atelier utilise des machines de découpe et de pliage du métal aux organes accessibles", moyens:"", conseil:"Vérifier la conformité des protecteurs de machines de l'atelier (INRS ED 6094).", prioritaire:true},
+    {risque:"Risques de coupures", poste:"Serrurier(ère)-métallier(ère)", situation:"La manipulation de tôles et profilés métalliques expose à un risque de coupure", moyens:"", conseil:"Prévoir des gants anti-coupure adaptés à la manipulation de métal (stcs.fr).", prioritaire:false},
+    {risque:"Risques liés au bruit", poste:"Ensemble atelier", situation:"Les opérations de découpe et de meulage génèrent un niveau sonore élevé en atelier", moyens:"", conseil:"Réaliser un mesurage de bruit sur les postes concernés (INRS ED 6035).", prioritaire:false},
+    {risque:"Risques de chutes de hauteur", poste:"Poseur(se) métallerie", situation:"La pose de garde-corps et structures métalliques s'effectue parfois en hauteur", moyens:"", conseil:"Vérifier la conformité des équipements d'accès en hauteur (INRS ED 6109).", prioritaire:false},
+    {risque:"Risques électriques", poste:"Soudeur(se)", situation:"Les postes à souder sont alimentés par une installation électrique de forte puissance", moyens:"", conseil:"Faire vérifier périodiquement l'installation électrique de l'atelier (stcs.fr).", prioritaire:false},
+    {risque:"Risques liés aux TMS et à la manutention", poste:"Serrurier(ère)-métallier(ère)", situation:"La manutention de pièces métalliques lourdes sollicite fortement le dos et les membres supérieurs", moyens:"", conseil:"Étudier le recours à des aides mécaniques de manutention en atelier (INRS ED 6144).", prioritaire:false}
+  ],
+  preconisations: [
+    "Le soudage à l'arc expose les soudeurs à des projections, des brûlures et un rayonnement UV au quotidien. Vérifier le port systématique et le bon état des équipements de protection dédiés au soudage (masque, gants, tablier) permettrait de sécuriser durablement ce poste.",
+    "Les fumées métalliques générées par le soudage sont inhalées à proximité immédiate du poste de travail. Vérifier l'efficacité de l'aspiration des fumées à la source constitue une mesure de prévention prioritaire pour préserver la santé respiratoire des soudeurs.",
+    "L'atelier utilise des machines de découpe et de pliage du métal dont certains organes restent accessibles en fonctionnement. Vérifier la conformité et le bon état des protecteurs de ces machines contribuerait à réduire durablement ce risque mécanique."
+  ]
+},
+
+"4329A": {
+  label: "Travaux d'isolation",
+  postes: [
+    {groupe:"Production", poste:"Isoleur(se)", taches:"Pose d'isolants thermiques et acoustiques en combles et murs"},
+    {groupe:"Encadrement", poste:"Chef d'équipe isolation", taches:"Organisation des chantiers, contrôle qualité, relation clients"}
+  ],
+  risques: [
+    {risque:"Risques chimiques — fibres isolantes", poste:"Isoleur(se)", situation:"La pose de laine minérale ou de mousse isolante expose à l'inhalation de fibres et particules", moyens:"", conseil:"Vérifier le port de masques adaptés et la ventilation lors de la pose (INRS ED 6091).", prioritaire:true},
+    {risque:"Risques liés aux TMS et postures contraintes", poste:"Isoleur(se)", situation:"La pose d'isolant en combles ou en espace confiné impose des postures accroupies ou agenouillées prolongées", moyens:"", conseil:"Étudier des équipements de protection des genoux et l'alternance de postures (stcs.fr).", prioritaire:true},
+    {risque:"Risques de chutes de hauteur", poste:"Isoleur(se)", situation:"Les interventions en combles ou en toiture exposent à un risque de chute", moyens:"", conseil:"Vérifier la mise en place de protections collectives lors des interventions en toiture (INRS ED 6109).", prioritaire:true},
+    {risque:"Risques liés aux ambiances thermiques", poste:"Isoleur(se)", situation:"Les interventions en combles non ventilés exposent à des températures élevées en période chaude", moyens:"", conseil:"Prévoir des temps de pause et une hydratation adaptée en période chaude (stcs.fr).", prioritaire:false},
+    {risque:"Risques respiratoires", poste:"Isoleur(se)", situation:"Le travail en espace confiné et peu ventilé favorise l'accumulation de poussières inhalables", moyens:"", conseil:"Vérifier la ventilation des espaces confinés lors des interventions (INRS).", prioritaire:false},
+    {risque:"Risques électriques", poste:"Isoleur(se)", situation:"Les interventions en combles se déroulent parfois à proximité de câblages électriques existants", moyens:"", conseil:"Sensibiliser à la vigilance vis-à-vis des câblages existants en combles (stcs.fr).", prioritaire:false}
+  ],
+  preconisations: [
+    "La pose de laine minérale ou de mousse isolante expose les isoleurs à l'inhalation de fibres et de particules tout au long de l'intervention. Vérifier le port systématique de masques adaptés et la ventilation des espaces de pose permettrait de réduire durablement cette exposition.",
+    "Les interventions en combles ou en espace confiné imposent des postures accroupies ou agenouillées prolongées, particulièrement contraignantes pour le corps. Étudier des équipements de protection des genoux et l'alternance des postures pourrait contribuer à préserver la santé physique des isoleurs.",
+    "Les interventions en combles ou en toiture exposent les isoleurs à un risque de chute. Vérifier la mise en place systématique de protections collectives adaptées lors de ces interventions constitue une mesure de prévention prioritaire pour ce métier."
+  ]
+},
+
+"4322A": {
+  label: "Travaux de plomberie, installation d'eau et de gaz",
+  postes: [
+    {groupe:"Production", poste:"Plombier(ère)-chauffagiste", taches:"Installation et dépannage de réseaux d'eau et de gaz"},
+    {groupe:"Encadrement", poste:"Chef d'équipe plomberie", taches:"Organisation des interventions, contrôle qualité, relation clients"}
+  ],
+  risques: [
+    {risque:"Risques liés au gaz", poste:"Plombier(ère)-chauffagiste", situation:"Les interventions sur des installations de gaz comportent un risque de fuite ou d'inflammation", moyens:"", conseil:"Vérifier la formation et l'habilitation gaz du personnel concerné (INRS, stcs.fr).", prioritaire:true},
+    {risque:"Risques liés aux TMS et postures contraintes", poste:"Plombier(ère)-chauffagiste", situation:"Les interventions sous évier, en vide sanitaire ou en espace réduit imposent des postures contraignantes", moyens:"", conseil:"Étudier l'organisation des interventions en espace réduit (INRS ED 6161).", prioritaire:true},
+    {risque:"Risques liés au soudage et au brasage", poste:"Plombier(ère)-chauffagiste", situation:"Le brasage de tuyauteries expose à des projections chaudes et à des fumées", moyens:"", conseil:"Vérifier le port d'EPI adaptés lors des opérations de brasage (INRS ED 6132).", prioritaire:true},
+    {risque:"Risques de coupures", poste:"Plombier(ère)-chauffagiste", situation:"La découpe de tubes métalliques et cuivre s'effectue avec des outils tranchants", moyens:"", conseil:"Prévoir des gants adaptés à la découpe de tubes (stcs.fr).", prioritaire:false},
+    {risque:"Risques électriques", poste:"Plombier(ère)-chauffagiste", situation:"Les interventions se déroulent parfois à proximité d'installations électriques existantes", moyens:"", conseil:"Sensibiliser à la vigilance vis-à-vis des installations électriques existantes (INRS).", prioritaire:false},
+    {risque:"Risques liés à la manutention", poste:"Plombier(ère)-chauffagiste", situation:"Le transport de matériel et de chaudières sollicite le port de charges", moyens:"", conseil:"Étudier le recours à des aides à la manutention pour le matériel lourd (INRS ED 6144).", prioritaire:false},
+    {risque:"Risques routiers", poste:"Plombier(ère)-chauffagiste", situation:"Les déplacements quotidiens entre chantiers s'effectuent en véhicule utilitaire", moyens:"", conseil:"Vérifier le suivi d'entretien des véhicules utilitaires (INRS ED 6110).", prioritaire:false}
+  ],
+  preconisations: [
+    "Les interventions sur des installations de gaz comportent un risque de fuite ou d'inflammation nécessitant une vigilance constante. Vérifier que l'ensemble du personnel concerné dispose bien de la formation et de l'habilitation gaz appropriées reste une mesure de prévention prioritaire pour ce métier.",
+    "Les interventions sous évier, en vide sanitaire ou en espace réduit imposent des postures particulièrement contraignantes aux plombiers. Étudier l'organisation de ces interventions et les équipements pouvant faciliter le travail en espace réduit contribuerait à préserver leur santé physique.",
+    "Le brasage de tuyauteries expose les plombiers à des projections chaudes et à des fumées lors des opérations d'assemblage. Vérifier la disponibilité et le port d'équipements de protection adaptés à ces opérations permettrait de limiter ce risque au quotidien."
+  ]
+},
+
+"4677Z": {
+  label: "Commerce de gros de déchets et débris",
+  postes: [
+    {groupe:"Production", poste:"Agent(e) de tri", taches:"Tri manuel et orientation des déchets et matériaux"},
+    {groupe:"Production", poste:"Cariste", taches:"Conduite d'engins de manutention et chargement de camions"},
+    {groupe:"Encadrement", poste:"Responsable de site", taches:"Organisation du site, gestion des flux et de la sécurité"}
+  ],
+  risques: [
+    {risque:"Risques liés aux équipements de manutention", poste:"Cariste", situation:"Les caristes conduisent des engins de manutention à proximité de zones de circulation piétonne", moyens:"", conseil:"Vérifier le plan de circulation et la formation CACES des caristes (INRS, stcs.fr).", prioritaire:true},
+    {risque:"Risques de coupures et perforations", poste:"Agent(e) de tri", situation:"Le tri manuel de déchets et débris expose à un contact avec des objets coupants ou perforants", moyens:"", conseil:"Prévoir des gants anti-perforation adaptés au tri (INRS ED 6144).", prioritaire:true},
+    {risque:"Risques chimiques et biologiques", poste:"Agent(e) de tri", situation:"Les matières triées peuvent contenir des résidus dangereux ou des agents biologiques non identifiés", moyens:"", conseil:"Vérifier les équipements de protection respiratoire et cutanée au poste de tri (INRS).", prioritaire:true},
+    {risque:"Risques liés au bruit", poste:"Ensemble site", situation:"Les équipements de broyage et de compactage génèrent un niveau sonore élevé", moyens:"", conseil:"Réaliser un mesurage de bruit sur le site (INRS ED 6035).", prioritaire:false},
+    {risque:"Risques liés aux poussières", poste:"Agent(e) de tri", situation:"Le tri et le compactage de matériaux génèrent des poussières inhalables", moyens:"", conseil:"Vérifier le port de masques adaptés au poste de tri (stcs.fr).", prioritaire:false},
+    {risque:"Risques d'incendie", poste:"Ensemble site", situation:"Le stockage de matières combustibles en extérieur comporte un risque d'incendie", moyens:"", conseil:"Vérifier l'organisation du stockage et les moyens de lutte contre l'incendie (INRS).", prioritaire:false},
+    {risque:"Risques de chutes de plain-pied", poste:"Agent(e) de tri", situation:"Les zones de tri encombrées favorisent les glissades et chutes", moyens:"", conseil:"Organiser le dégagement régulier des zones de circulation (stcs.fr).", prioritaire:false},
+    {risque:"Risques liés aux TMS et à la manutention", poste:"Agent(e) de tri", situation:"Le tri manuel implique des gestes répétés et le port de charges variables", moyens:"", conseil:"Étudier l'organisation des postes de tri pour limiter la répétitivité (INRS ED 6161).", prioritaire:false}
+  ],
+  preconisations: [
+    "Les caristes conduisent des engins de manutention à proximité de zones où circulent des piétons sur le site. Vérifier l'existence d'un plan de circulation clair et s'assurer que l'ensemble des caristes dispose de la formation CACES appropriée permettrait de sécuriser durablement ces zones partagées.",
+    "Le tri manuel de déchets et débris expose les agents à un contact avec des objets coupants ou perforants non identifiés à l'avance. Prévoir des gants anti-perforation adaptés à cette activité reste une mesure de protection individuelle essentielle en complément du tri à la source.",
+    "Les matières triées peuvent contenir des résidus dangereux ou des agents biologiques dont la nature n'est pas toujours identifiable au moment du tri. Vérifier la disponibilité d'équipements de protection respiratoire et cutanée adaptés contribuerait à limiter cette exposition incertaine."
+  ]
+},
+
+"4675Z": {
+  label: "Commerce de gros de produits chimiques",
+  postes: [
+    {groupe:"Logistique", poste:"Magasinier(ère)", taches:"Réception, stockage et préparation de commandes de produits chimiques"},
+    {groupe:"Logistique", poste:"Cariste", taches:"Manutention et chargement de palettes de produits chimiques"},
+    {groupe:"Encadrement", poste:"Responsable logistique", taches:"Organisation des flux, gestion des stocks et de la sécurité"}
+  ],
+  risques: [
+    {risque:"Risques chimiques", poste:"Magasinier(ère)", situation:"La manipulation et le stockage de produits chimiques exposent à un contact cutané ou une inhalation", moyens:"", conseil:"Vérifier les fiches de données de sécurité et les EPI associés (INRS, stcs.fr).", prioritaire:true},
+    {risque:"Risques d'incendie et d'explosion", poste:"Ensemble entrepôt", situation:"Le stockage de produits chimiques inflammables ou réactifs comporte un risque d'incendie", moyens:"", conseil:"Vérifier la compatibilité de stockage des produits et les moyens de lutte incendie (INRS ED 6083).", prioritaire:true},
+    {risque:"Risques liés aux équipements de manutention", poste:"Cariste", situation:"Les caristes manipulent des charges palettisées de produits chimiques en zones de circulation partagées", moyens:"", conseil:"Vérifier le plan de circulation et la formation CACES des caristes (INRS).", prioritaire:true},
+    {risque:"Risques liés aux TMS", poste:"Magasinier(ère)", situation:"La préparation de commandes implique le port répété de bidons et contenants", moyens:"", conseil:"Étudier le recours à des aides à la manutention pour les contenants lourds (INRS ED 6144).", prioritaire:false},
+    {risque:"Risques de déversement", poste:"Magasinier(ère)", situation:"La manipulation de contenants de produits liquides comporte un risque de déversement accidentel", moyens:"", conseil:"Vérifier la disponibilité de kits de rétention et d'absorption (stcs.fr).", prioritaire:false},
+    {risque:"Risques électriques", poste:"Ensemble entrepôt", situation:"L'entrepôt comporte des installations électriques à proximité de zones de stockage sensibles", moyens:"", conseil:"Faire vérifier périodiquement les installations électriques de l'entrepôt (INRS).", prioritaire:false},
+    {risque:"Risques psychosociaux — organisation du travail", poste:"Responsable logistique", situation:"La gestion des flux et des délais de livraison génère une charge de travail variable", moyens:"", conseil:"Anticiper la planification de charge en période de forte activité (guide INRS RPS).", prioritaire:false}
+  ],
+  preconisations: [
+    "La manipulation et le stockage de produits chimiques exposent quotidiennement les magasiniers à un contact cutané ou une inhalation. Vérifier la disponibilité et l'actualisation des fiches de données de sécurité, ainsi que les équipements de protection associés, permettrait de sécuriser durablement ces postes.",
+    "Le stockage de produits chimiques inflammables ou réactifs comporte un risque d'incendie propre à ce type d'activité. Vérifier la compatibilité de stockage entre les différents produits et l'adéquation des moyens de lutte contre l'incendie disponibles sur site reste une priorité.",
+    "Les caristes manipulent des charges palettisées de produits chimiques dans des zones où circulent également d'autres personnels. Vérifier l'existence d'un plan de circulation clair et la formation CACES de l'ensemble des caristes contribuerait à sécuriser ces zones partagées."
+  ]
+},
+
+"3312Z": {
+  label: "Réparation de machines et équipements mécaniques",
+  postes: [
+    {groupe:"Production", poste:"Technicien(ne) de maintenance", taches:"Diagnostic, réparation et entretien de machines industrielles"},
+    {groupe:"Production", poste:"Mécanicien(ne) industriel(le)", taches:"Démontage, remontage et réglage d'équipements mécaniques"}
+  ],
+  risques: [
+    {risque:"Risques liés aux équipements de travail", poste:"Technicien(ne) de maintenance", situation:"Les interventions sur machines en cours de réparation exposent à des organes mécaniques accessibles", moyens:"", conseil:"Vérifier la mise en œuvre de procédures de consignation (INRS ED 6109).", prioritaire:true},
+    {risque:"Risques liés à la consignation des énergies", poste:"Technicien(ne) de maintenance", situation:"Les interventions de maintenance nécessitent une mise hors tension effective des équipements", moyens:"", conseil:"Formaliser une procédure de consignation systématique avant intervention (INRS, stcs.fr).", prioritaire:true},
+    {risque:"Risques liés aux TMS et à la manutention", poste:"Mécanicien(ne) industriel(le)", situation:"Le démontage de pièces mécaniques lourdes sollicite fortement le dos et les membres supérieurs", moyens:"", conseil:"Étudier le recours à des aides mécaniques de manutention en atelier (INRS ED 6144).", prioritaire:true},
+    {risque:"Risques chimiques", poste:"Mécanicien(ne) industriel(le)", situation:"L'entretien des machines implique la manipulation d'huiles et de graisses industrielles", moyens:"", conseil:"Vérifier le port de gants adaptés à la manipulation d'huiles (stcs.fr).", prioritaire:false},
+    {risque:"Risques liés au bruit", poste:"Ensemble atelier", situation:"Les essais de fonctionnement des machines réparées génèrent un niveau sonore ponctuel élevé", moyens:"", conseil:"Évaluer le niveau sonore lors des phases d'essai (INRS ED 6035).", prioritaire:false},
+    {risque:"Risques de coupures", poste:"Mécanicien(ne) industriel(le)", situation:"Le démontage de pièces mécaniques expose à un contact avec des arêtes coupantes", moyens:"", conseil:"Prévoir des gants adaptés à la manipulation de pièces mécaniques (stcs.fr).", prioritaire:false},
+    {risque:"Risques électriques", poste:"Technicien(ne) de maintenance", situation:"Les interventions s'effectuent sur des équipements raccordés à des installations électriques industrielles", moyens:"", conseil:"Vérifier l'habilitation électrique du personnel intervenant (INRS).", prioritaire:false}
+  ],
+  preconisations: [
+    "Les interventions sur des machines en cours de réparation exposent les techniciens à des organes mécaniques restés accessibles. Vérifier la mise en œuvre systématique de procédures de consignation avant intervention permettrait de sécuriser durablement ces opérations de maintenance.",
+    "Les interventions de maintenance nécessitent une mise hors tension effective des équipements avant toute intervention. Formaliser une procédure de consignation claire et systématique, partagée avec l'ensemble de l'équipe, constitue une mesure de prévention prioritaire pour ce métier.",
+    "Le démontage de pièces mécaniques lourdes sollicite fortement le dos et les membres supérieurs des mécaniciens au quotidien. Étudier le recours à des aides mécaniques de manutention en atelier pourrait contribuer à réduire cette contrainte physique sur la durée."
+  ]
+},
+
+"4322B": {
+  label: "Travaux d'installation thermique et de climatisation",
+  postes: [
+    {groupe:"Production", poste:"Technicien(ne) chauffage-climatisation", taches:"Installation et entretien d'équipements de chauffage et climatisation"},
+    {groupe:"Encadrement", poste:"Chef d'équipe", taches:"Organisation des interventions, contrôle qualité, relation clients"}
+  ],
+  risques: [
+    {risque:"Risques liés aux fluides frigorigènes", poste:"Technicien(ne) chauffage-climatisation", situation:"La manipulation de fluides frigorigènes lors des interventions comporte un risque toxique et de brûlure froide", moyens:"", conseil:"Vérifier l'attestation d'aptitude fluides frigorigènes du personnel concerné (INRS, stcs.fr).", prioritaire:true},
+    {risque:"Risques liés aux TMS et postures contraintes", poste:"Technicien(ne) chauffage-climatisation", situation:"Les interventions en combles, chaufferies ou espaces réduits imposent des postures contraignantes", moyens:"", conseil:"Étudier l'organisation des interventions en espace réduit (INRS ED 6161).", prioritaire:true},
+    {risque:"Risques liés au travail en hauteur", poste:"Technicien(ne) chauffage-climatisation", situation:"L'installation d'unités extérieures de climatisation s'effectue parfois en hauteur sur façade ou toiture", moyens:"", conseil:"Vérifier la conformité des équipements d'accès en hauteur (INRS ED 6109).", prioritaire:true},
+    {risque:"Risques de brûlures", poste:"Technicien(ne) chauffage-climatisation", situation:"Les interventions sur chaudières exposent à des surfaces et fluides à haute température", moyens:"", conseil:"Vérifier le port d'EPI adaptés lors des interventions sur chaudières (stcs.fr).", prioritaire:false},
+    {risque:"Risques électriques", poste:"Technicien(ne) chauffage-climatisation", situation:"Les équipements de chauffage et climatisation sont raccordés à des installations électriques dédiées", moyens:"", conseil:"Vérifier l'habilitation électrique du personnel intervenant (INRS).", prioritaire:false},
+    {risque:"Risques liés au gaz", poste:"Technicien(ne) chauffage-climatisation", situation:"Les interventions sur chaudières à gaz comportent un risque de fuite", moyens:"", conseil:"Vérifier la formation et l'habilitation gaz du personnel concerné (stcs.fr).", prioritaire:false},
+    {risque:"Risques routiers", poste:"Technicien(ne) chauffage-climatisation", situation:"Les déplacements quotidiens entre chantiers s'effectuent en véhicule utilitaire", moyens:"", conseil:"Vérifier le suivi d'entretien des véhicules utilitaires (INRS ED 6110).", prioritaire:false}
+  ],
+  preconisations: [
+    "La manipulation de fluides frigorigènes lors des interventions sur les équipements de climatisation comporte un risque toxique et de brûlure froide. Vérifier que le personnel concerné dispose bien de l'attestation d'aptitude requise constitue une mesure de prévention prioritaire pour ce métier.",
+    "Les interventions en combles, chaufferies ou espaces réduits imposent des postures particulièrement contraignantes aux techniciens. Étudier l'organisation de ces interventions et les équipements pouvant faciliter le travail en espace restreint contribuerait à préserver leur santé physique sur la durée.",
+    "L'installation d'unités extérieures de climatisation en façade ou en toiture expose les techniciens à un risque de chute. Vérifier la conformité et la disponibilité d'équipements d'accès en hauteur adaptés permettrait de sécuriser durablement ces interventions."
+  ]
+},
+
+"8121Z": {
+  label: "Nettoyage courant des bâtiments",
+  postes: [
+    {groupe:"Production", poste:"Agent(e) de propreté", taches:"Nettoyage et entretien courant de locaux professionnels"},
+    {groupe:"Encadrement", poste:"Chef d'équipe nettoyage", taches:"Organisation des tournées, gestion du matériel et des produits"}
+  ],
+  risques: [
+    {risque:"Risques chimiques", poste:"Agent(e) de propreté", situation:"L'utilisation quotidienne de produits d'entretien expose au contact cutané et à l'inhalation", moyens:"", conseil:"Vérifier les fiches de données de sécurité et l'usage de produits moins dangereux (INRS ED 6008).", prioritaire:true},
+    {risque:"Risques liés aux TMS et gestes répétitifs", poste:"Agent(e) de propreté", situation:"Les tâches de nettoyage impliquent des gestes répétés et des postures contraignantes prolongées", moyens:"", conseil:"Étudier l'organisation des tournées pour limiter la répétitivité (INRS ED 6161).", prioritaire:true},
+    {risque:"Risques liés aux horaires atypiques et à l'isolement", poste:"Agent(e) de propreté", situation:"Les interventions se déroulent souvent tôt le matin, en soirée ou seul dans les locaux", moyens:"", conseil:"Mettre en place un dispositif de signalement de présence pour les interventions isolées (stcs.fr).", prioritaire:true},
+    {risque:"Risques de chutes de plain-pied", poste:"Agent(e) de propreté", situation:"Les sols fraîchement lavés peuvent être glissants durant et après l'intervention", moyens:"", conseil:"Mettre à disposition une signalétique de sol glissant (stcs.fr).", prioritaire:false},
+    {risque:"Risques liés au travail en hauteur", poste:"Agent(e) de propreté", situation:"Le nettoyage de vitres ou de surfaces en hauteur s'effectue parfois avec un escabeau", moyens:"", conseil:"Vérifier la conformité et l'usage systématique de l'escabeau (INRS).", prioritaire:false},
+    {risque:"Risques électriques", poste:"Agent(e) de propreté", situation:"L'utilisation d'appareils électriques (aspirateurs, autolaveuses) s'effectue dans des environnements variés", moyens:"", conseil:"Sensibiliser à la vérification visuelle du matériel avant usage (stcs.fr).", prioritaire:false},
+    {risque:"Risques routiers", poste:"Agent(e) de propreté", situation:"Les déplacements entre plusieurs sites d'intervention s'effectuent en véhicule dans la journée", moyens:"", conseil:"Vérifier le suivi d'entretien des véhicules et l'organisation des tournées (INRS ED 6110).", prioritaire:false}
+  ],
+  preconisations: [
+    "L'utilisation quotidienne de produits d'entretien expose les agents de propreté à un contact cutané et à une inhalation répétée. Vérifier les fiches de données de sécurité des produits utilisés et privilégier, lorsque possible, des produits moins dangereux permettrait de limiter cette exposition.",
+    "Les tâches de nettoyage impliquent des gestes répétés et des postures contraignantes tout au long des tournées. Étudier l'organisation de ces tournées pour limiter la répétitivité des gestes contribuerait à préserver la santé physique des agents sur la durée.",
+    "Les interventions se déroulent souvent tôt le matin, en soirée ou seul dans les locaux, ce qui peut générer un sentiment d'isolement. Mettre en place un dispositif simple de signalement de présence pour ces interventions isolées renforcerait la sécurité des agents concernés."
+  ]
+},
+
+"2573B": {
+  label: "Fabrication d'outillage à main",
+  postes: [
+    {groupe:"Production", poste:"Opérateur(trice) de production", taches:"Alimentation et surveillance de machines de fabrication"},
+    {groupe:"Production", poste:"Régleur(se) de machines", taches:"Réglage, changement d'outillage et maintenance de premier niveau"},
+    {groupe:"Qualité", poste:"Contrôleur(se) qualité", taches:"Contrôle dimensionnel et visuel des pièces produites"}
+  ],
+  risques: [
+    {risque:"Risques liés aux équipements de travail", poste:"Opérateur(trice) de production", situation:"Les opérateurs alimentent des machines de production dont certains organes mobiles restent accessibles", moyens:"", conseil:"Vérifier la conformité des protecteurs de machines (INRS ED 6094).", prioritaire:true},
+    {risque:"Risques liés au bruit", poste:"Ensemble atelier", situation:"Les machines de production fonctionnent en continu et génèrent un niveau sonore élevé", moyens:"", conseil:"Réaliser un mesurage de bruit et évaluer le port de protections auditives (INRS ED 6035).", prioritaire:true},
+    {risque:"Risques liés aux TMS et gestes répétitifs", poste:"Opérateur(trice) de production", situation:"Les opérateurs répètent les mêmes gestes de production tout au long du poste", moyens:"", conseil:"Étudier la rotation des postes pour limiter la répétitivité (INRS ED 6161).", prioritaire:true},
+    {risque:"Risques chimiques", poste:"Opérateur(trice) de production", situation:"Les opérations d'usinage utilisent des huiles de coupe pouvant irriter la peau", moyens:"", conseil:"Vérifier le port de gants adaptés à la manipulation d'huiles de coupe (stcs.fr).", prioritaire:false},
+    {risque:"Risques de coupures", poste:"Opérateur(trice) de production", situation:"La manipulation de pièces métalliques brutes expose à des arêtes coupantes", moyens:"", conseil:"Prévoir des gants anti-coupure adaptés à la manipulation de pièces brutes (stcs.fr).", prioritaire:false},
+    {risque:"Risques électriques", poste:"Régleur(se) de machines", situation:"Le réglage des machines s'effectue parfois à proximité d'armoires électriques ouvertes", moyens:"", conseil:"Vérifier l'habilitation électrique du personnel de réglage (INRS).", prioritaire:false},
+    {risque:"Risques liés aux vibrations", poste:"Opérateur(trice) de production", situation:"L'utilisation de certains outils portatifs expose à des vibrations transmises aux mains", moyens:"", conseil:"Limiter les temps d'exposition continue aux outils vibrants (INRS ED 863).", prioritaire:false},
+    {risque:"Risques de projection", poste:"Contrôleur(se) qualité", situation:"Les opérations de contrôle et d'ébavurage exposent à des projections de particules métalliques", moyens:"", conseil:"Vérifier le port de lunettes de protection au poste de contrôle (stcs.fr).", prioritaire:false}
+  ],
+  preconisations: [
+    "Les opérateurs alimentent des machines de production dont certains organes mobiles restent accessibles en fonctionnement. Vérifier la conformité et le bon état des protecteurs de machines constitue une mesure de prévention prioritaire pour sécuriser durablement ces postes.",
+    "Le fonctionnement continu des machines de production génère un niveau sonore élevé en atelier tout au long de la journée. Réaliser un mesurage de bruit et évaluer l'adéquation des protections auditives disponibles permettrait d'objectiver l'exposition réelle des opérateurs.",
+    "Les opérateurs répètent les mêmes gestes de production tout au long de leur poste, ce qui sollicite fortement certaines articulations. Étudier une rotation des postes entre opérateurs pourrait contribuer à limiter cette exposition aux gestes répétitifs sur la durée."
+  ]
+},
+
+"2219Z": {
+  label: "Fabrication d'articles en caoutchouc",
+  postes: [
+    {groupe:"Production", poste:"Opérateur(trice) de production", taches:"Chargement, surveillance et déchargement de presses de moulage"},
+    {groupe:"Production", poste:"Régleur(se) de presses", taches:"Réglage et maintenance de premier niveau des presses"},
+    {groupe:"Qualité", poste:"Contrôleur(se) qualité", taches:"Contrôle visuel et dimensionnel des pièces moulées"}
+  ],
+  risques: [
+    {risque:"Risques chimiques", poste:"Opérateur(trice) de production", situation:"La transformation du caoutchouc expose à des vapeurs et particules émises lors du moulage", moyens:"", conseil:"Vérifier la ventilation des postes de moulage (INRS ED 6008).", prioritaire:true},
+    {risque:"Risques liés aux ambiances thermiques", poste:"Opérateur(trice) de production", situation:"Les presses de vulcanisation fonctionnent à haute température à proximité des opérateurs", moyens:"", conseil:"Prévoir des temps de pause adaptés aux postes exposés à la chaleur (stcs.fr).", prioritaire:true},
+    {risque:"Risques liés aux équipements de travail", poste:"Régleur(se) de presses", situation:"Le réglage des presses expose à un contact avec des parties mobiles et chauffantes", moyens:"", conseil:"Vérifier les dispositifs de sécurité des presses (INRS ED 6109).", prioritaire:true},
+    {risque:"Risques liés au bruit", poste:"Ensemble atelier", situation:"Les machines de production fonctionnent en continu et génèrent un bruit de fond élevé", moyens:"", conseil:"Réaliser un mesurage de bruit sur les postes concernés (INRS ED 6035).", prioritaire:false},
+    {risque:"Risques de brûlures", poste:"Opérateur(trice) de production", situation:"La manipulation de pièces en sortie de presse expose à des surfaces chaudes", moyens:"", conseil:"Vérifier le port de gants thermiques adaptés (stcs.fr).", prioritaire:false},
+    {risque:"Risques liés aux TMS", poste:"Opérateur(trice) de production", situation:"Les opérateurs répètent les mêmes gestes de chargement et déchargement des presses", moyens:"", conseil:"Étudier la rotation des postes pour limiter la répétitivité (INRS ED 6161).", prioritaire:false},
+    {risque:"Risques électriques", poste:"Régleur(se) de presses", situation:"Les presses sont alimentées par une installation électrique de forte puissance", moyens:"", conseil:"Vérifier l'habilitation électrique du personnel de réglage (INRS).", prioritaire:false}
+  ],
+  preconisations: [
+    "La transformation du caoutchouc génère des vapeurs et des particules émises lors des opérations de moulage. Vérifier l'efficacité de la ventilation aux postes de moulage constitue une mesure de prévention prioritaire pour limiter cette exposition chimique au quotidien.",
+    "Les presses de vulcanisation fonctionnent à haute température à proximité immédiate des opérateurs tout au long de la production. Prévoir des temps de pause adaptés aux postes les plus exposés à la chaleur contribuerait à limiter cette pénibilité thermique.",
+    "Le réglage des presses expose les régleurs à un contact possible avec des parties mobiles et chauffantes. Vérifier régulièrement les dispositifs de sécurité des presses permettrait de sécuriser durablement ces interventions de réglage et de maintenance."
+  ]
+},
+
+"4511Z": {
+  label: "Commerce de véhicules automobiles légers",
+  postes: [
+    {groupe:"Commercial", poste:"Vendeur(se) automobile", taches:"Conseil, essais et vente de véhicules à la clientèle"},
+    {groupe:"Production", poste:"Préparateur(trice) de véhicules", taches:"Nettoyage, préparation esthétique et mise en main des véhicules"},
+    {groupe:"Encadrement", poste:"Responsable de concession", taches:"Gestion de l'équipe, du parc et des objectifs commerciaux"}
+  ],
+  risques: [
+    {risque:"Risques de circulation", poste:"Préparateur(trice) de véhicules", situation:"Les préparateurs déplacent et manœuvrent des véhicules au sein du parc d'exposition", moyens:"", conseil:"Organiser un plan de circulation au sein du parc de véhicules (stcs.fr).", prioritaire:true},
+    {risque:"Risques chimiques", poste:"Préparateur(trice) de véhicules", situation:"La préparation esthétique des véhicules implique l'usage de produits de nettoyage et de traitement", moyens:"", conseil:"Vérifier les fiches de données de sécurité des produits utilisés (INRS).", prioritaire:true},
+    {risque:"Risques psychosociaux — pression commerciale", poste:"Vendeur(se) automobile", situation:"Les vendeurs sont soumis à des objectifs de vente réguliers", moyens:"", conseil:"Échanger périodiquement sur la charge commerciale ressentie (guide INRS RPS).", prioritaire:true},
+    {risque:"Risques liés à la manutention", poste:"Préparateur(trice) de véhicules", situation:"La manipulation d'accessoires et de pièces détachées sollicite le port de charges", moyens:"", conseil:"Étudier l'organisation du stockage des accessoires et pièces (INRS ED 6144).", prioritaire:false},
+    {risque:"Risques de chutes de plain-pied", poste:"Ensemble concession", situation:"Le parc extérieur peut présenter des sols glissants selon les conditions météorologiques", moyens:"", conseil:"Organiser le traitement des sols extérieurs par temps de pluie ou de gel (stcs.fr).", prioritaire:false},
+    {risque:"Risques routiers", poste:"Vendeur(se) automobile", situation:"Les essais routiers avec la clientèle exposent au risque de circulation", moyens:"", conseil:"Rappeler les règles de sécurité applicables lors des essais routiers (INRS ED 6110).", prioritaire:false}
+  ],
+  preconisations: [
+    "Les préparateurs déplacent et manœuvrent quotidiennement des véhicules au sein d'un parc d'exposition partagé avec la clientèle. Organiser un plan de circulation clair au sein du parc permettrait de réduire les risques de collision ou de heurt entre véhicules et piétons.",
+    "La préparation esthétique des véhicules implique l'usage régulier de produits de nettoyage et de traitement des surfaces. Vérifier les fiches de données de sécurité de ces produits et adapter les équipements de protection contribuerait à limiter cette exposition chimique.",
+    "Les vendeurs sont soumis à des objectifs de vente réguliers qui peuvent générer une pression commerciale continue. Un temps d'échange périodique sur la charge ressentie au sein de l'équipe pourrait contribuer à mieux réguler cette pression au quotidien."
+  ]
+},
+
+"9312Z": {
+  label: "Activités de clubs de sport",
+  postes: [
+    {groupe:"Encadrement sportif", poste:"Éducateur(trice) sportif(ve)", taches:"Encadrement de cours collectifs et de séances individuelles"},
+    {groupe:"Accueil", poste:"Agent(e) d'accueil", taches:"Accueil des adhérents, inscriptions et gestion du planning"},
+    {groupe:"Encadrement", poste:"Responsable de club", taches:"Gestion de l'équipe, des équipements et de l'activité commerciale"}
+  ],
+  risques: [
+    {risque:"Risques liés aux TMS et à l'effort physique", poste:"Éducateur(trice) sportif(ve)", situation:"L'encadrement d'activités physiques implique une sollicitation physique répétée tout au long de la journée", moyens:"", conseil:"Étudier l'alternance des cours encadrés au sein de l'équipe (INRS ED 6161).", prioritaire:true},
+    {risque:"Risques de chutes et de traumatismes", poste:"Éducateur(trice) sportif(ve)", situation:"La démonstration d'exercices et l'usage d'équipements sportifs comportent un risque de chute ou de choc", moyens:"", conseil:"Vérifier la conformité et l'entretien des équipements sportifs (stcs.fr).", prioritaire:true},
+    {risque:"Risques liés à la voix", poste:"Éducateur(trice) sportif(ve)", situation:"L'encadrement de cours collectifs implique une sollicitation vocale prolongée et répétée", moyens:"", conseil:"Vérifier la disponibilité d'un système de sonorisation pour les cours collectifs (stcs.fr).", prioritaire:true},
+    {risque:"Risques électriques", poste:"Agent(e) d'accueil", situation:"L'entretien des équipements motorisés (tapis, vélos) comporte un risque de contact électrique", moyens:"", conseil:"Faire vérifier périodiquement les équipements électriques du club (INRS).", prioritaire:false},
+    {risque:"Risques biologiques", poste:"Ensemble club", situation:"Le partage d'équipements et de vestiaires expose à un contact avec des agents biologiques", moyens:"", conseil:"Vérifier le protocole de nettoyage des équipements partagés (stcs.fr).", prioritaire:false},
+    {risque:"Risques psychosociaux — relation clientèle", poste:"Agent(e) d'accueil", situation:"L'accueil continu d'une clientèle variée peut générer des situations de tension ponctuelles", moyens:"", conseil:"Organiser des temps d'échange sur les situations difficiles rencontrées à l'accueil (guide INRS RPS).", prioritaire:false}
+  ],
+  preconisations: [
+    "L'encadrement d'activités physiques sollicite fortement les éducateurs sportifs sur le plan physique tout au long de la journée. Étudier l'alternance des cours encadrés au sein de l'équipe permettrait de mieux répartir cette sollicitation entre les différents éducateurs.",
+    "La démonstration d'exercices et l'usage des équipements sportifs comportent un risque de chute ou de choc pour les éducateurs. Vérifier régulièrement la conformité et le bon état d'entretien des équipements sportifs contribuerait à sécuriser durablement les séances encadrées.",
+    "L'encadrement de cours collectifs implique une sollicitation vocale prolongée et répétée pour les éducateurs sportifs. Vérifier la disponibilité d'un système de sonorisation adapté aux cours collectifs permettrait de préserver leur voix sur la durée."
+  ]
+},
+
+"4321A": {
+  label: "Travaux d'installation électrique",
+  postes: [
+    {groupe:"Production", poste:"Électricien(ne) du bâtiment", taches:"Installation et raccordement de réseaux électriques"},
+    {groupe:"Encadrement", poste:"Chef d'équipe électricité", taches:"Organisation des chantiers, contrôle qualité, relation clients"}
+  ],
+  risques: [
+    {risque:"Risques électriques", poste:"Électricien(ne) du bâtiment", situation:"Les électriciens interviennent sur des installations sous tension ou à proximité de celles-ci", moyens:"", conseil:"Vérifier l'habilitation électrique et le respect des consignes de consignation (INRS, stcs.fr).", prioritaire:true},
+    {risque:"Risques de chutes de hauteur", poste:"Électricien(ne) du bâtiment", situation:"La pose de câblages et d'appareillages en hauteur s'effectue sur échelle ou nacelle", moyens:"", conseil:"Vérifier la conformité des équipements d'accès en hauteur (INRS ED 6109).", prioritaire:true},
+    {risque:"Risques liés aux TMS et postures contraintes", poste:"Électricien(ne) du bâtiment", situation:"Les interventions en faux plafond ou en gaine technique imposent des postures contraignantes", moyens:"", conseil:"Étudier l'organisation des interventions en espace réduit (INRS ED 6161).", prioritaire:true},
+    {risque:"Risques liés aux outils portatifs", poste:"Électricien(ne) du bâtiment", situation:"Le perçage et la fixation d'appareillages s'effectuent avec des outils électroportatifs", moyens:"", conseil:"Vérifier la conformité et l'entretien des outils électroportatifs (stcs.fr).", prioritaire:false},
+    {risque:"Risques de coupures", poste:"Électricien(ne) du bâtiment", situation:"Le dénudage et le raccordement de câbles exposent à un risque de coupure", moyens:"", conseil:"Prévoir des outils de dénudage adaptés et sécurisés (INRS).", prioritaire:false},
+    {risque:"Risques routiers", poste:"Électricien(ne) du bâtiment", situation:"Les déplacements quotidiens entre chantiers s'effectuent en véhicule utilitaire", moyens:"", conseil:"Vérifier le suivi d'entretien des véhicules utilitaires (INRS ED 6110).", prioritaire:false},
+    {risque:"Risques liés aux poussières", poste:"Électricien(ne) du bâtiment", situation:"Le percement de cloisons et de murs génère des poussières inhalables ponctuelles", moyens:"", conseil:"Vérifier le port de masques adaptés lors des percements (stcs.fr).", prioritaire:false}
+  ],
+  preconisations: [
+    "Les électriciens interviennent régulièrement sur des installations sous tension ou à proximité immédiate de celles-ci. Vérifier que l'ensemble du personnel dispose de l'habilitation électrique appropriée et respecte les consignes de consignation constitue une mesure de prévention prioritaire pour ce métier.",
+    "La pose de câblages et d'appareillages en hauteur s'effectue régulièrement sur échelle ou nacelle selon les chantiers. Vérifier la conformité des équipements d'accès en hauteur utilisés permettrait de sécuriser durablement ces interventions.",
+    "Les interventions en faux plafond ou en gaine technique imposent des postures particulièrement contraignantes aux électriciens. Étudier l'organisation de ces interventions en espace réduit pourrait contribuer à préserver leur santé physique sur la durée."
+  ]
+},
+
+"8520Z": {
+  label: "Enseignement primaire",
+  postes: [
+    {groupe:"Enseignement", poste:"Enseignant(e)", taches:"Préparation et animation des enseignements auprès des élèves"},
+    {groupe:"Vie scolaire", poste:"ATSEM / agent(e) territorial(e) spécialisé(e)", taches:"Assistance aux enseignants et accompagnement des jeunes enfants"},
+    {groupe:"Vie scolaire", poste:"Personnel de vie scolaire", taches:"Surveillance, accompagnement et encadrement périscolaire"}
+  ],
+  risques: [
+    {risque:"Risques liés à la voix", poste:"Enseignant(e)", situation:"L'enseignement en classe implique une sollicitation vocale prolongée et répétée sur la journée", moyens:"", conseil:"Vérifier l'acoustique des salles de classe et sensibiliser aux techniques vocales (stcs.fr).", prioritaire:true},
+    {risque:"Risques psychosociaux — charge mentale", poste:"Enseignant(e)", situation:"La gestion simultanée d'un groupe d'enfants et des apprentissages génère une charge mentale continue", moyens:"", conseil:"Organiser des temps d'échange entre enseignants sur les pratiques de classe (guide INRS RPS).", prioritaire:true},
+    {risque:"Risques liés aux postures", poste:"ATSEM / agent(e) territorial(e) spécialisé(e)", situation:"L'accompagnement des jeunes enfants implique des postures accroupies et des ports d'enfants répétés", moyens:"", conseil:"Étudier l'aménagement du mobilier pour limiter les postures contraignantes (INRS ED 6161).", prioritaire:true},
+    {risque:"Risques biologiques", poste:"Ensemble personnel", situation:"Le contact rapproché avec de jeunes enfants expose à un risque infectieux accru", moyens:"", conseil:"Rappeler les règles d'hygiène et de lavage des mains (stcs.fr).", prioritaire:false},
+    {risque:"Risques de chutes de plain-pied", poste:"Ensemble personnel", situation:"La cour de récréation et les espaces de circulation peuvent présenter des sols inégaux", moyens:"", conseil:"Vérifier l'état des revêtements de la cour et des circulations (INRS).", prioritaire:false},
+    {risque:"Risques liés au bruit", poste:"Enseignant(e)", situation:"Le niveau sonore en classe et dans la cour peut être soutenu selon les effectifs", moyens:"", conseil:"Évaluer l'ambiance sonore des espaces les plus exposés (INRS ED 6035).", prioritaire:false}
+  ],
+  preconisations: [
+    "L'enseignement en classe implique une sollicitation vocale prolongée et répétée tout au long de la journée. Vérifier l'acoustique des salles de classe et sensibiliser aux bonnes pratiques d'utilisation de la voix contribuerait à préserver la santé vocale des enseignants sur la durée.",
+    "La gestion simultanée d'un groupe d'enfants et des apprentissages génère une charge mentale continue pour les enseignants. Organiser des temps d'échange réguliers entre collègues sur les pratiques de classe pourrait contribuer à mieux partager et réguler cette charge.",
+    "L'accompagnement des jeunes enfants implique des postures accroupies et des ports d'enfants répétés au quotidien pour le personnel de vie scolaire. Étudier l'aménagement du mobilier et des espaces pour limiter ces postures contraignantes préserverait leur santé physique."
+  ]
+},
+
+"5621Z": {
+  label: "Services des traiteurs",
+  postes: [
+    {groupe:"Production", poste:"Cuisinier(ère) traiteur", taches:"Préparation de plats et de buffets pour événements"},
+    {groupe:"Production", poste:"Chef de production", taches:"Organisation de la production, gestion des commandes et des stocks"},
+    {groupe:"Livraison", poste:"Agent(e) de service événementiel", taches:"Livraison, dressage et service sur les lieux de réception"}
+  ],
+  risques: [
+    {risque:"Risques liés aux TMS et à la manutention", poste:"Cuisinier(ère) traiteur", situation:"La préparation de grandes quantités et le transport de plats en caisses sollicitent fortement le dos", moyens:"", conseil:"Étudier le recours à des chariots pour le transport des préparations (INRS ED 6144).", prioritaire:true},
+    {risque:"Risques liés aux ambiances thermiques", poste:"Cuisinier(ère) traiteur", situation:"La production en cuisine centrale expose à une chaleur soutenue lors des périodes de forte activité", moyens:"", conseil:"Prévoir des temps de pause adaptés en période de forte production (stcs.fr).", prioritaire:true},
+    {risque:"Risques routiers", poste:"Agent(e) de service événementiel", situation:"Les livraisons sur sites de réception s'effectuent en véhicule selon des délais parfois serrés", moyens:"", conseil:"Anticiper les temps de trajet pour limiter la pression horaire (INRS ED 6110).", prioritaire:true},
+    {risque:"Risques de coupures", poste:"Cuisinier(ère) traiteur", situation:"La découpe d'ingrédients en grande quantité s'effectue avec des couteaux et trancheuses", moyens:"", conseil:"Vérifier l'entretien du tranchant et les protections des équipements (stcs.fr).", prioritaire:false},
+    {risque:"Risques biologiques", poste:"Cuisinier(ère) traiteur", situation:"La préparation à l'avance de plats périssables expose à un risque de rupture de la chaîne du froid", moyens:"", conseil:"Vérifier le respect de la chaîne du froid lors du transport (méthode HACCP).", prioritaire:false},
+    {risque:"Risques psychosociaux — pics d'activité événementielle", poste:"Chef de production", situation:"L'activité connaît des pics d'intensité concentrés sur les dates d'événements", moyens:"", conseil:"Anticiper le dimensionnement de l'équipe sur les périodes de forte activité (guide INRS RPS).", prioritaire:false},
+    {risque:"Risques de chutes de plain-pied", poste:"Ensemble cuisine", situation:"Le sol de cuisine peut être rendu glissant lors des périodes de forte production", moyens:"", conseil:"Organiser un nettoyage régulier des zones de circulation (INRS ED 6178).", prioritaire:false}
+  ],
+  preconisations: [
+    "La préparation de grandes quantités et le transport de plats en caisses sollicitent fortement le dos des cuisiniers traiteurs. Étudier le recours à des chariots adaptés pour le transport des préparations pourrait contribuer à réduire cette contrainte physique lors des grosses productions.",
+    "La production en cuisine centrale expose l'équipe à une chaleur soutenue lors des périodes de forte activité événementielle. Prévoir des temps de pause adaptés à ces périodes intenses contribuerait à limiter la pénibilité thermique ressentie par les cuisiniers.",
+    "Les livraisons sur les sites de réception s'effectuent en véhicule selon des délais parfois serrés propres à l'activité événementielle. Anticiper les temps de trajet en amont permettrait de limiter la pression horaire pesant sur les agents de livraison."
+  ]
+},
+
+"7430Z": {
+  label: "Traduction et interprétation",
+  postes: [
+    {groupe:"Production", poste:"Traducteur(trice)", taches:"Traduction écrite de documents dans une ou plusieurs langues"},
+    {groupe:"Production", poste:"Interprète", taches:"Interprétation simultanée ou consécutive lors d'échanges oraux"},
+    {groupe:"Support", poste:"Chargé(e) de projet linguistique", taches:"Coordination des missions, relation clients, suivi des délais"}
+  ],
+  risques: [
+    {risque:"Risques liés aux TMS et au travail sur écran", poste:"Traducteur(trice)", situation:"Le poste implique un travail prolongé et quasi continu sur écran", moyens:"", conseil:"Veiller à l'ergonomie du poste de travail sur écran (INRS ED 6172).", prioritaire:true},
+    {risque:"Risques liés à la voix", poste:"Interprète", situation:"L'interprétation simultanée ou consécutive sollicite fortement la voix sur des durées prolongées", moyens:"", conseil:"Prévoir des temps de pause vocale lors des missions longues (stcs.fr).", prioritaire:true},
+    {risque:"Risques psychosociaux — charge mentale et délais", poste:"Traducteur(trice)", situation:"Les délais de rendu de traduction génèrent une charge mentale concentrée sur des périodes courtes", moyens:"", conseil:"Anticiper la planification de charge en amont des échéances (guide INRS RPS).", prioritaire:true},
+    {risque:"Risques liés à la sédentarité", poste:"Traducteur(trice)", situation:"Le poste s'exerce en position assise prolongée avec peu d'alternance d'activité", moyens:"", conseil:"Encourager des pauses actives régulières au cours de la journée (stcs.fr).", prioritaire:false},
+    {risque:"Risques liés à l'ambiance visuelle", poste:"Traducteur(trice)", situation:"Le travail prolongé sur écran peut solliciter la fatigue visuelle", moyens:"", conseil:"Vérifier l'adaptation de l'éclairage et des réglages d'écran (INRS ED 6172).", prioritaire:false}
+  ],
+  preconisations: [
+    "Le poste de traducteur implique un travail prolongé et quasi continu sur écran tout au long de la journée. Veiller à l'ergonomie du poste (écran, siège, éclairage) contribuerait à limiter la fatigue visuelle et les tensions musculaires liées à cette activité sédentaire.",
+    "L'interprétation simultanée ou consécutive sollicite fortement la voix des interprètes sur des durées parfois prolongées lors des missions. Prévoir des temps de pause vocale réguliers durant ces missions permettrait de préserver leur voix sur la durée.",
+    "Les délais de rendu de traduction génèrent une charge mentale concentrée sur des périodes courtes et intenses. Anticiper la planification de la charge de travail en amont des échéances importantes pourrait contribuer à mieux réguler cette pression temporelle."
+  ]
+},
+
+"2562B": {
+  label: "Décolletage (usinage de précision)",
+  postes: [
+    {groupe:"Production", poste:"Opérateur(trice) de décolletage", taches:"Surveillance et alimentation de tours automatiques"},
+    {groupe:"Production", poste:"Régleur(se) de tours automatiques", taches:"Réglage, changement d'outillage et maintenance de premier niveau"},
+    {groupe:"Qualité", poste:"Contrôleur(se) qualité", taches:"Contrôle dimensionnel des pièces usinées"}
+  ],
+  risques: [
+    {risque:"Risques liés aux équipements de travail", poste:"Opérateur(trice) de décolletage", situation:"Les opérateurs surveillent des tours automatiques dont les zones d'usinage restent partiellement accessibles", moyens:"", conseil:"Vérifier la conformité des protecteurs des tours automatiques (INRS ED 6094).", prioritaire:true},
+    {risque:"Risques chimiques — huiles de coupe", poste:"Opérateur(trice) de décolletage", situation:"L'usinage utilise en continu des huiles de coupe pouvant irriter la peau par contact répété", moyens:"", conseil:"Vérifier le port de gants adaptés et l'entretien des systèmes de lubrification (INRS ED 6008).", prioritaire:true},
+    {risque:"Risques liés au bruit", poste:"Ensemble atelier", situation:"Les tours automatiques fonctionnent en continu et génèrent un niveau sonore élevé en atelier", moyens:"", conseil:"Réaliser un mesurage de bruit et évaluer le port de protections auditives (INRS ED 6035).", prioritaire:true},
+    {risque:"Risques de coupures et projections", poste:"Opérateur(trice) de décolletage", situation:"Le changement d'outils et l'évacuation des copeaux métalliques exposent à des projections et coupures", moyens:"", conseil:"Prévoir des gants adaptés et des protections oculaires (stcs.fr).", prioritaire:false},
+    {risque:"Risques électriques", poste:"Régleur(se) de tours automatiques", situation:"Le réglage des tours s'effectue parfois à proximité d'armoires électriques ouvertes", moyens:"", conseil:"Vérifier l'habilitation électrique du personnel de réglage (INRS).", prioritaire:false},
+    {risque:"Risques liés aux TMS", poste:"Opérateur(trice) de décolletage", situation:"La surveillance de plusieurs machines implique des déplacements et gestes répétés en atelier", moyens:"", conseil:"Étudier l'organisation des tournées de surveillance machines (INRS ED 6161).", prioritaire:false},
+    {risque:"Risques d'incendie", poste:"Ensemble atelier", situation:"Les huiles de coupe utilisées en grande quantité comportent un risque d'incendie en cas d'incident", moyens:"", conseil:"Vérifier les moyens de lutte contre l'incendie à proximité des tours (INRS).", prioritaire:false}
+  ],
+  preconisations: [
+    "Les opérateurs surveillent des tours automatiques dont certaines zones d'usinage restent partiellement accessibles en fonctionnement. Vérifier la conformité et le bon état des protecteurs de ces machines constitue une mesure de prévention prioritaire pour sécuriser durablement ces postes.",
+    "L'usinage utilise en continu des huiles de coupe pouvant irriter la peau par contact répété tout au long du poste. Vérifier le port systématique de gants adaptés et le bon entretien des systèmes de lubrification permettrait de limiter cette exposition cutanée.",
+    "Le fonctionnement continu des tours automatiques génère un niveau sonore élevé en atelier tout au long de la journée. Réaliser un mesurage de bruit et évaluer l'adéquation des protections auditives disponibles permettrait d'objectiver l'exposition réelle des opérateurs."
+  ]
+},
+
+"GENERIQUE": {
+  label: "Modèle générique (secteur non modélisé)",
+  postes: [
+    {groupe:"À préciser", poste:"Poste à préciser lors de la visite", taches:"Non renseigné — à confirmer lors d'une prochaine visite"},
+    {groupe:"À préciser", poste:"Poste à préciser lors de la visite", taches:"Non renseigné — à confirmer lors d'une prochaine visite"}
+  ],
+  risques: [
+    {risque:"Risques liés aux équipements de travail", poste:"À préciser", situation:"Non renseigné — à confirmer lors d'une prochaine visite", moyens:"", conseil:"Non renseigné — à confirmer lors d'une prochaine visite", prioritaire:false},
+    {risque:"Risques liés au bruit", poste:"À préciser", situation:"Non renseigné — à confirmer lors d'une prochaine visite", moyens:"", conseil:"Non renseigné — à confirmer lors d'une prochaine visite", prioritaire:false},
+    {risque:"Risques chimiques", poste:"À préciser", situation:"Non renseigné — à confirmer lors d'une prochaine visite", moyens:"", conseil:"Non renseigné — à confirmer lors d'une prochaine visite", prioritaire:false},
+    {risque:"Risques liés aux TMS et à la manutention", poste:"À préciser", situation:"Non renseigné — à confirmer lors d'une prochaine visite", moyens:"", conseil:"Non renseigné — à confirmer lors d'une prochaine visite", prioritaire:false},
+    {risque:"Risques de chutes", poste:"À préciser", situation:"Non renseigné — à confirmer lors d'une prochaine visite", moyens:"", conseil:"Non renseigné — à confirmer lors d'une prochaine visite", prioritaire:false},
+    {risque:"Risques électriques", poste:"À préciser", situation:"Non renseigné — à confirmer lors d'une prochaine visite", moyens:"", conseil:"Non renseigné — à confirmer lors d'une prochaine visite", prioritaire:false},
+    {risque:"Risques psychosociaux", poste:"À préciser", situation:"Non renseigné — à confirmer lors d'une prochaine visite", moyens:"", conseil:"Non renseigné — à confirmer lors d'une prochaine visite", prioritaire:false},
+    {risque:"Risques de circulation", poste:"À préciser", situation:"Non renseigné — à confirmer lors d'une prochaine visite", moyens:"", conseil:"Non renseigné — à confirmer lors d'une prochaine visite", prioritaire:false}
+  ],
+  preconisations: [
+    "Non renseigné — secteur non modélisé. Compléter cette préconisation à partir des risques identifiés lors de la visite, en priorisant les situations les plus fréquentes ou les plus graves observées.",
+    "Non renseigné — secteur non modélisé. Compléter cette préconisation à partir des risques identifiés lors de la visite.",
+    "Non renseigné — secteur non modélisé. Compléter cette préconisation à partir des risques identifiés lors de la visite."
+  ]
+}
+};
+
+/* Alias : codes NAF proches redirigés vers un profil déjà modélisé */
+const ALIAS = {
+  "1610A":"1623Z", "1629A":"1623Z", "1624Z":"1623Z",
+  "4399D":"4399C", "4399A":"4399C",
+  "4520B":"4520A",
+  "5610C":"5610A", "5610B":"5610A",
+  "1071A":"1071C", "1071B":"1071C",
+  "4772A":"4771Z", "4772B":"4771Z"
+};
+
+/* ============================================================
+   LOGIQUE DE L'INTERFACE
+   ============================================================ */
+function remplirDatalist(){
+  const dl = document.getElementById('naf-liste');
+  Object.keys(NAF_DB).filter(k=>k!=="GENERIQUE").forEach(code=>{
+    const opt = document.createElement('option');
+    opt.value = formatNaf(code);
+    opt.label = NAF_DB[code].label;
+    dl.appendChild(opt);
+  });
+}
+remplirDatalist();
+
+function normaliserNaf(saisie){
+  return (saisie||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+}
+function formatNaf(code){
+  // 4 chiffres + 1 lettre -> "43.99C"
+  if(/^\d{4}[A-Z]$/.test(code)) return code.slice(0,2)+"."+code.slice(2,4)+code.slice(4);
+  return code;
+}
+
+function trouverProfil(saisie){
+  const n = normaliserNaf(saisie);
+  if(NAF_DB[n]) return {code:n, source:"exact"};
+  if(ALIAS[n]) return {code:ALIAS[n], source:"alias"};
+  // tentative de rapprochement par préfixe (3 premiers chiffres)
+  const prefixe = n.slice(0,3);
+  const candidat = Object.keys(NAF_DB).find(k => k!=="GENERIQUE" && k.slice(0,3)===prefixe);
+  if(candidat) return {code:candidat, source:"prefixe"};
+  return {code:"GENERIQUE", source:"aucune"};
+}
+
+let compteurLignesRisque = 0;
+let compteurLignesPoste = 0;
+
+function genererFE(){
+  const saisie = document.getElementById('naf').value.trim();
+  if(!saisie){ alert("Veuillez saisir un code NAF."); return; }
+  const {code, source} = trouverProfil(saisie);
+  const profil = NAF_DB[code];
+
+  const statut = document.getElementById('statutCouverture');
+  if(source==="exact" || source==="alias"){
+    statut.className = "statut-couverture ok";
+    statut.textContent = "✓ Profil sectoriel reconnu : " + profil.label + ". Contenu proposé à vérifier lors de la visite.";
+  } else if(source==="prefixe"){
+    statut.className = "statut-couverture fallback";
+    statut.textContent = "⚠ Code NAF non répertorié exactement — rapprochement approximatif proposé avec : " + profil.label + ". À valider avec attention.";
+  } else {
+    statut.className = "statut-couverture fallback";
+    statut.textContent = "⚠ Code NAF hors du socle de secteurs modélisés. Modèle générique affiché — à compléter intégralement lors de la visite.";
+  }
+
+  remplirTablePostes(profil.postes);
+  remplirTableRisques(profil.risques);
+  remplirPreconisations(profil.preconisations, profil.risques);
+
+  document.getElementById('videPostes').style.display = 'none';
+}
+
+function remplirTablePostes(postes){
+  const tbody = document.querySelector('#tablePostes tbody');
+  tbody.innerHTML = "";
+  compteurLignesPoste = 0;
+  postes.forEach(p => ajouterLignePoste(p.groupe, p.poste, p.taches, 1));
+}
+
+function ajouterLignePoste(groupe="", poste="", taches="", nb=1){
+  const tbody = document.querySelector('#tablePostes tbody');
+  const tr = document.createElement('tr');
+  compteurLignesPoste++;
+  tr.innerHTML = `
+    <td contenteditable="true">${groupe}</td>
+    <td contenteditable="true">${poste}</td>
+    <td contenteditable="true">${taches}</td>
+    <td contenteditable="true">${nb}</td>
+    <td class="col-actions"><button onclick="this.closest('tr').remove()" title="Supprimer">✕</button></td>
+  `;
+  tbody.appendChild(tr);
+  document.getElementById('videPostes').style.display = 'none';
+}
+
+function remplirTableRisques(risques){
+  const tbody = document.querySelector('#tableRisques tbody');
+  tbody.innerHTML = "";
+  risques.forEach(r => ajouterLigneRisque(r.risque, r.poste, r.situation, r.moyens || "Non renseigné — à confirmer lors d'une prochaine visite", r.conseil, r.prioritaire));
+}
+
+function ajouterLigneRisque(risque="", poste="", situation="", moyens="Non renseigné — à confirmer lors d'une prochaine visite", conseil="", prioritaire=false){
+  const tbody = document.querySelector('#tableRisques tbody');
+  const tr = document.createElement('tr');
+  if(prioritaire) tr.className = "prioritaire";
+  const badge = prioritaire ? '<span class="badge-prio">PRIORITAIRE</span>' : '';
+  tr.innerHTML = `
+    <td contenteditable="true">${risque}${badge}</td>
+    <td contenteditable="true">${poste}</td>
+    <td contenteditable="true">${situation}</td>
+    <td contenteditable="true">${moyens}</td>
+    <td contenteditable="true">${conseil}</td>
+    <td class="col-actions"><button onclick="this.closest('tr').remove()" title="Supprimer">✕</button></td>
+  `;
+  tbody.appendChild(tr);
+}
+
+function remplirPreconisations(textes, risques){
+  const bloc = document.getElementById('blocsPreconisations');
+  bloc.innerHTML = "";
+  const risquesPrio = risques.filter(r=>r.prioritaire);
+  textes.forEach((texte, i)=>{
+    const titreRisque = risquesPrio[i] ? risquesPrio[i].risque : ("Préconisation " + (i+1));
+    const div = document.createElement('div');
+    div.className = "bloc-preco";
+    div.innerHTML = `
+      <h3><span class="num-preco">${i+1}</span> ${titreRisque}</h3>
+      <div contenteditable="true">${texte}</div>
+    `;
+    bloc.appendChild(div);
+  });
+}
+
+function copierTexte(){
+  let texte = "PRÉSENTATION DE L'ENTREPRISE\n";
+  const nom = document.getElementById('nomEntreprise').value || "(non renseigné)";
+  const naf = document.getElementById('naf').value || "(non renseigné)";
+  const eff = document.getElementById('effectif').value || "(non renseigné)";
+  texte += `Entreprise : ${nom}  |  NAF : ${naf}  |  Effectif : ${eff}\n\n`;
+
+  texte += "POSTES DE TRAVAIL ET GROUPES DE POSTES\n";
+  document.querySelectorAll('#tablePostes tbody tr').forEach(tr=>{
+    const c = tr.querySelectorAll('td');
+    if(c.length>=4) texte += `- [${c[0].innerText}] ${c[1].innerText} — ${c[2].innerText} (${c[3].innerText} sal.)\n`;
+  });
+
+  texte += "\nREPÉRAGE DES RISQUES ET CONSEILS DE PRÉVENTION\n";
+  document.querySelectorAll('#tableRisques tbody tr').forEach(tr=>{
+    const c = tr.querySelectorAll('td');
+    if(c.length>=5){
+      const prio = tr.classList.contains('prioritaire') ? " [PRIORITAIRE]" : "";
+      texte += `- Risque : ${c[0].innerText}${prio}\n  Poste(s) : ${c[1].innerText}\n  Situation : ${c[2].innerText}\n  Prévention existante : ${c[3].innerText}\n  Conseil : ${c[4].innerText}\n\n`;
+    }
+  });
+
+  texte += "PRÉCONISATIONS D'ACTIONS DE PRÉVENTION PRIMAIRE\n";
+  document.querySelectorAll('.bloc-preco').forEach((b,i)=>{
+    texte += `${i+1}. ${b.querySelector('h3').innerText.replace(/^\d+\s*/,'')}\n${b.querySelector('div[contenteditable]').innerText}\n\n`;
+  });
+
+  navigator.clipboard.writeText(texte).then(()=>{
+    alert("Contenu copié — vous pouvez le coller dans votre document Word ou Access.");
+  }).catch(()=>{
+    alert("La copie automatique n'est pas disponible sur ce navigateur. Sélectionnez et copiez manuellement le contenu des tableaux.");
+  });
+}
+
+function reinitialiser(){
+  if(!confirm("Réinitialiser tous les tableaux et effacer les modifications en cours ?")) return;
+  document.getElementById('naf').value = "";
+  document.getElementById('effectif').value = "";
+  document.getElementById('nomEntreprise').value = "";
+  document.querySelector('#tablePostes tbody').innerHTML = "";
+  document.querySelector('#tableRisques tbody').innerHTML = "";
+  document.getElementById('blocsPreconisations').innerHTML = "";
+  document.getElementById('statutCouverture').className = "statut-couverture";
+  document.getElementById('statutCouverture').textContent = "";
+  document.getElementById('videPostes').style.display = 'block';
+}
+</script>
+
+</body>
+</html>
